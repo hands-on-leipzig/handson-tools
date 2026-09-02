@@ -1,0 +1,31 @@
+{
+  "name": "domain-shortener",
+  "version": "1.0.0",
+  "description": "Simple domain shortener service",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js",
+    "pm2:start": "pm2 start ecosystem.config.js",
+    "pm2:stop": "pm2 stop domain-shortener",
+    "pm2:restart": "pm2 restart domain-shortener",
+    "pm2:delete": "pm2 delete domain-shortener",
+    "pm2:logs": "pm2 logs domain-shortener",
+    "pm2:status": "pm2 status"
+  },
+  "keywords": ["url-shortener", "redirect"],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.18.2",
+    "express-session": "^1.17.3",
+    "passport": "^0.6.0",
+    "passport-openidconnect": "^0.1.1",
+    "body-parser": "^1.20.2",
+    "dotenv": "^10.0.0"
+  },
+  "devDependencies": {
+    "pm2": "^5.3.0"
+  }
+}
+

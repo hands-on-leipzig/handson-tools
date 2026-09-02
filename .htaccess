@@ -1,0 +1,22 @@
+# Enable mod_rewrite
+RewriteEngine On
+
+# Force HTTPS redirect
+RewriteCond %{HTTPS} off
+RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [R=301,L]
+
+# Disable directory listing
+Options -Indexes
+DirectoryIndex disabled
+
+# Proxy all requests to Node.js on port 3000 (HTTP)
+# The [P] flag proxies internally - URL stays as handson.tools (no :3000)
+# Apache handles HTTPS termination, then proxies to Node.js internally
+
+# Explicitly handle root path
+RewriteRule ^$ http://127.0.0.1:3000/ [P,L]
+
+# Proxy all other requests (excluding actual files)
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^(.*)$ http://127.0.0.1:3000/$1 [P,L]
