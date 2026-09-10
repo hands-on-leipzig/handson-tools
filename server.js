@@ -15,6 +15,30 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 const URLS_FILE = path.join(__dirname, 'urls.json');
 
+// Every slug that is not in urls.json is an event slug and belongs to FLOW.
+const FLOW_BASE_URL = (process.env.FLOW_BASE_URL || 'https://flow.hands-on-technology.org').replace(/\/$/, '');
+
+// Only these files are public; everything else in the project directory (urls.json,
+// server.js, .env, logs) must never be served.
+const STATIC_FILES = ['favicon.ico', 'hot.png'];
+
+// Redirect to a target, keeping the query string of the incoming request. FLOW reads
+// ?source=qr to tell scanned QR codes from ordinary visits, so dropping it here would
+// silently falsify that statistic.
+function redirectTo(req, res, target, permanent) {
+  const query = req.originalUrl.indexOf('?');
+  const incoming = query === -1 ? '' : req.originalUrl.slice(query + 1);
+  const separator = target.includes('?') ? '&' : '?';
+  const url = incoming === '' ? target : `${target}${separator}${incoming}`;
+
+  res.redirect(permanent ? 301 : 302, url);
+}
+
+// Absolute target for a urls.json entry, which may be stored without a protocol.
+function withProtocol(target) {
+  return /^https?:\/\//i.test(target) ? target : `https://${target}`;
+}
+
 // Environment variables for Keycloak OAuth
 const KEYCLOAK_ISSUER = process.env.KEYCLOAK_ISSUER; // e.g., https://keycloak.example.com/realms/your-realm
 const KEYCLOAK_CLIENT_ID = process.env.KEYCLOAK_CLIENT_ID;
@@ -41,8 +65,12 @@ app.use(bodyParser.urlencoded({ extended: true }));
 
 // No HTTPS enforcement needed - Apache handles HTTPS termination
 
-// Serve static files (logo)
-app.use(express.static(__dirname));
+// Serve static files (logo, favicon) — named explicitly instead of the whole directory
+STATIC_FILES.forEach((file) => {
+  app.get(`/${file}`, (req, res) => {
+    res.sendFile(path.join(__dirname, file));
+  });
+});
 
 // Ensure urls.json exists
 if (!fs.existsSync(URLS_FILE)) {
@@ -705,34 +733,28 @@ app.get('/', (req, res) => {
   res.send(generateIndexPage());
 });
 
-// Special case: /k/:id routes to flow.hands-on-technology.org/carousel/:id
+// Special case: /s/:id routes to FLOW's carousel
 app.get('/s/:id', (req, res) => {
   const { id } = req.params;
-  const redirectUrl = `https://flow.hands-on-technology.org/carousel/${id}`;
-  res.redirect(301, redirectUrl);
+  redirectTo(req, res, `${FLOW_BASE_URL}/carousel/${id}`, true);
 });
 
-// Redirect handler for slugs with paths (e.g., /flow/anything)
+// Redirect handler for slugs with paths (e.g., /flow/anything). Event links of past
+// seasons look the same (/2025/aachen) and pass through to FLOW, which resolves the
+// year as the season.
 app.get('/:slug/*', (req, res) => {
   const { slug } = req.params;
   const path = req.params[0]; // Everything after /slug/
   const urls = getUrls();
   
   if (urls[slug]) {
-    const targetUrl = urls[slug];
-    // Ensure URL has protocol
-    const baseUrl = targetUrl.startsWith('http://') || targetUrl.startsWith('https://')
-      ? targetUrl
-      : `https://${targetUrl}`;
-    
     // Append the path to the target URL
-    const redirectUrl = `${baseUrl}/${path}`;
-    
-    res.redirect(301, redirectUrl);
+    redirectTo(req, res, `${withProtocol(urls[slug])}/${path}`, true);
   } else {
-    // Fallback: assume it's an event slug and redirect to flow
-    const redirectUrl = `https://flow.hands-on-technology.org/${slug}/${path}`;
-    res.redirect(301, redirectUrl);
+    // Fallback: assume it's an event slug and redirect to flow. Not permanent, because
+    // FLOW decides per slug and season what it resolves to, and a cached 301 would
+    // outlive that decision.
+    redirectTo(req, res, `${FLOW_BASE_URL}/${slug}/${path}`, false);
   }
 });
 
@@ -742,17 +764,10 @@ app.get('/:slug', (req, res) => {
   const urls = getUrls();
   
   if (urls[slug]) {
-    const targetUrl = urls[slug];
-    // Ensure URL has protocol
-    const redirectUrl = targetUrl.startsWith('http://') || targetUrl.startsWith('https://')
-      ? targetUrl
-      : `https://${targetUrl}`;
-    
-    res.redirect(301, redirectUrl);
+    redirectTo(req, res, withProtocol(urls[slug]), true);
   } else {
     // Fallback: assume it's an event slug and redirect to flow
-    const redirectUrl = `https://flow.hands-on-technology.org/${slug}`;
-    res.redirect(301, redirectUrl);
+    redirectTo(req, res, `${FLOW_BASE_URL}/${slug}`, false);
   }
 });
 
