@@ -751,9 +751,9 @@ app.get('/:slug/*', (req, res) => {
     // Append the path to the target URL
     redirectTo(req, res, `${withProtocol(urls[slug])}/${path}`, true);
   } else {
-    // Fallback: assume it's an event slug and redirect to flow. Not permanent, because
-    // FLOW decides per slug and season what it resolves to, and a cached 301 would
-    // outlive that decision.
+    // Fallback: assume it's an event slug and redirect to flow. Only temporary — the
+    // assumption is a guess, and a slug that later becomes an entry in urls.json would
+    // never reach its new target from browsers that cached a 301.
     redirectTo(req, res, `${FLOW_BASE_URL}/${slug}/${path}`, false);
   }
 });
