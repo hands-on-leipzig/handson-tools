@@ -25,16 +25,22 @@ function createHopAgent(BaseAgent) {
   return agent;
 }
 
-const hopHttpsAgent = hopHost ? createHopAgent(https.Agent) : new https.Agent({ family: 6, keepAlive: true });
-const hopHttpAgent = hopHost ? createHopAgent(http.Agent) : new http.Agent({ family: 6, keepAlive: true });
+const ipv6HttpsAgent = new https.Agent({ family: 6, keepAlive: true });
+const ipv6HttpAgent = new http.Agent({ family: 6, keepAlive: true });
+const hopHttpsAgent = hopHost ? createHopAgent(https.Agent) : null;
+const hopHttpAgent = hopHost ? createHopAgent(http.Agent) : null;
 
 function agentFor(target) {
+  let url;
   try {
-    if (!isFlowHostname(new URL(target).hostname)) return undefined;
+    url = new URL(target);
   } catch {
     return undefined;
   }
-  return /^https:/i.test(target) ? hopHttpsAgent : hopHttpAgent;
+  const secure = url.protocol === 'https:';
+  if (hopHost) return secure ? hopHttpsAgent : hopHttpAgent;
+  if (!isFlowHostname(url.hostname)) return undefined;
+  return secure ? ipv6HttpsAgent : ipv6HttpAgent;
 }
 
 function describeError(error) {
@@ -97,4 +103,4 @@ function proxyWeb(proxy, req, res, target, rewritePath) {
   });
 }
 
-module.exports = { createProxy, proxyWeb };
+module.exports = { createProxy, proxyWeb, agentFor };

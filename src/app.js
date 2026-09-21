@@ -6,7 +6,7 @@ const { configureAuth } = require('./auth');
 const { loadStore, upsertApp, deleteApp, setListed, setApexTarget } = require('./shortsStore');
 const { resolve } = require('./resolve');
 const { generateIndexPage, generateAdminPage } = require('./pages');
-const { createProxy, proxyWeb } = require('./proxy');
+const { createProxy, proxyWeb, agentFor } = require('./proxy');
 
 const STATIC_FILES = ['favicon.ico', 'hot.png'];
 
@@ -157,7 +157,7 @@ function createApp() {
       return;
     }
     if (decision.path) req.url = decision.path;
-    proxy.ws(req, socket, head, { target: decision.target, changeOrigin: true });
+    proxy.ws(req, socket, head, { target: decision.target, changeOrigin: true, agent: agentFor(decision.target) });
   });
   return app;
 }

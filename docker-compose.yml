@@ -1,13 +1,14 @@
 services:
   flow-hop:
-    image: alpine/socat
+    build: .
     restart: unless-stopped
     network_mode: host
-    command:
-      - "-d"
-      - "-d"
-      - "TCP-LISTEN:4180,fork,reuseaddr"
-      - "TCP6:flow.hands-on-technology.org:443"
+    env_file: .env
+    environment:
+      NODE_ENV: production
+      HOP_LISTEN_HOST: "0.0.0.0"
+      HOP_LISTEN_PORT: "4180"
+    command: ["node", "src/egressHop.js"]
 
   gateway:
     build: .

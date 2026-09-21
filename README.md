@@ -56,6 +56,8 @@ Same Docker host, network `proxy`, entrypoint `websecure`, resolver **`le-dns`**
 
 `data/shorts.json` is bind-mounted and edited by the admin UI.
 
+The `flow-hop` sidecar listens on host `:4180` and forwards TLS by SNI (IPv6 or IPv4). Docker’s bridge has no working IPv6, so every HTTPS proxy target goes through that hop — not only FLOW.
+
 ## FLOW env
 
 Production one-link stays `PUBLIC_URL=https://handson.tools`.
