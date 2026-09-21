@@ -16,6 +16,11 @@ describe('pages', () => {
     assert.match(html, /data-theme-set="dark"/);
   });
 
+  it('shows a forbidden notice on the index', () => {
+    const html = generateIndexPage(store, 'handson.tools', null, { error: 'forbidden' });
+    assert.match(html, /handson-tools-admin/);
+  });
+
   it('renders the admin with glass fields and buttons', () => {
     const html = generateAdminPage(store, 'handson.tools', { name: 'Ada' }, { error: 'auth_failed' });
     assert.match(html, /glass-input liquid-surface-control/);

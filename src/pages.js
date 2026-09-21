@@ -70,11 +70,12 @@ function flash(text, kind) {
   return `<div class="flash is-visible ${cls} liquid-surface-inner" role="status">${escapeHtml(text)}</div>`;
 }
 
-function generateIndexPage(store, baseDomain, notFoundSlug = null) {
+function generateIndexPage(store, baseDomain, notFoundSlug = null, query = {}) {
   const apps = store.apps || [];
-  const notFound = notFoundSlug
-    ? flash(`Unbekannt: ${notFoundSlug}`, 'err')
-    : '';
+  const notices = [
+    notFoundSlug ? flash(`Unbekannt: ${notFoundSlug}`, 'err') : '',
+    flash(indexErrorMessage(query.error), 'err'),
+  ].join('');
 
   const items = apps.map((app) => {
     const host = `${app.slug}.${baseDomain}`;
@@ -100,11 +101,18 @@ function generateIndexPage(store, baseDomain, notFoundSlug = null) {
       <p class="page-lead">One-Link: <code>${escapeHtml(baseDomain)}/&lt;event&gt;</code> · Apps auf Subdomains</p>
       <div class="page-toolbar">${themeToggle()}</div>
     </section>
-    ${notFound}
+    ${notices}
     ${apps.length
       ? `<ul class="list">${items}</ul>`
       : '<p class="muted">Noch keine Apps.</p>'}`,
   });
+}
+
+function indexErrorMessage(error) {
+  if (error === 'forbidden') return 'Kein Zugriff — die Client-Rolle handson-tools-admin fehlt.';
+  if (error === 'auth_failed') return 'Anmeldung fehlgeschlagen.';
+  if (error === 'logout_failed') return 'Abmelden fehlgeschlagen.';
+  return '';
 }
 
 function adminErrorMessage(error) {

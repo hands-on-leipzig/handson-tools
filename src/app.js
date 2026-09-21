@@ -112,7 +112,7 @@ function createApp() {
       case 'gateway':
         return res.status(404).send('Not found');
       case 'index':
-        return res.send(generateIndexPage(store, baseDomain));
+        return res.send(generateIndexPage(store, baseDomain, null, req.query || {}));
       case 'block':
         return res.status(404).end();
       case 'redirect':

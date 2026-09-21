@@ -31,7 +31,7 @@ Do **not** replace Traefik’s existing resolver `le` (HTTP-01, OpenProject). Ad
 
 ## Admin
 
-`https://handson.tools/admin` (Keycloak).
+`https://handson.tools/admin` (Keycloak, client role `handson-tools-admin`).
 
 Each short is:
 

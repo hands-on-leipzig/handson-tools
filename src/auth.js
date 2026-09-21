@@ -2,11 +2,30 @@ const session = require('express-session');
 const passport = require('passport');
 const OpenIDConnectStrategy = require('passport-openidconnect').Strategy;
 
-function allowedEmail(email, allowed) {
-  if (!allowed || allowed.length === 0) return true;
-  if (!email) return false;
-  const domain = email.split('@')[1];
-  return allowed.some((entry) => (entry.includes('@') ? entry === email : entry === domain));
+const ADMIN_ROLE = 'handson-tools-admin';
+
+function decodeJwt(token) {
+  if (!token || typeof token !== 'string') return null;
+  const parts = token.split('.');
+  if (parts.length < 2) return null;
+  try {
+    return JSON.parse(Buffer.from(parts[1], 'base64url').toString('utf8'));
+  } catch {
+    return null;
+  }
+}
+
+function hasClientRole(claims, clientId, role) {
+  if (!claims || !clientId || !role) return false;
+  const roles = claims.resource_access?.[clientId]?.roles;
+  return Array.isArray(roles) && roles.includes(role);
+}
+
+function hasAdminRole(idToken, accessToken, clientId, role = ADMIN_ROLE) {
+  for (const token of [accessToken, idToken]) {
+    if (hasClientRole(decodeJwt(token), clientId, role)) return true;
+  }
+  return false;
 }
 
 function configureAuth(app, { onApex } = {}) {
@@ -14,9 +33,7 @@ function configureAuth(app, { onApex } = {}) {
   const clientID = process.env.KEYCLOAK_CLIENT_ID;
   const clientSecret = process.env.KEYCLOAK_CLIENT_SECRET;
   const callbackURL = process.env.KEYCLOAK_CALLBACK_URL || 'https://handson.tools/auth/keycloak/callback';
-  const allowed = process.env.ALLOWED_EMAILS
-    ? process.env.ALLOWED_EMAILS.split(',').map((s) => s.trim()).filter(Boolean)
-    : null;
+  const adminRole = process.env.KEYCLOAK_ADMIN_ROLE || ADMIN_ROLE;
   const apex = onApex || ((req, res, next) => next());
 
   app.set('trust proxy', 1);
@@ -45,17 +62,11 @@ function configureAuth(app, { onApex } = {}) {
       clientSecret,
       callbackURL,
       scope: ['openid', 'profile', 'email'],
-    }, function verifyOidc() {
-      // passport-openidconnect picks the callback by .length; take the last
-      // argument as `done` so we do not depend on that arity table.
-      const done = arguments[arguments.length - 1];
-      const profile = arguments[1] || {};
+    }, function verifyOidc(iss, profile, context, idToken, accessToken, refreshToken, params, done) {
+      profile = profile || {};
       const email = profile.email || (profile.emails && profile.emails[0] && profile.emails[0].value) || null;
-      if (typeof done !== 'function') {
-        throw new Error('OpenID verify: done is not a function');
-      }
-      if (!allowedEmail(email, allowed)) {
-        return done(null, false, { message: 'Access denied. Your email is not authorized.' });
+      if (!hasAdminRole(idToken, accessToken, clientID, adminRole)) {
+        return done(null, false, { message: `Access denied. Missing client role ${adminRole}.` });
       }
       return done(null, {
         id: profile.id,
@@ -69,7 +80,7 @@ function configureAuth(app, { onApex } = {}) {
     app.get(
       '/auth/keycloak/callback',
       apex,
-      passport.authenticate('openidconnect', { failureRedirect: '/admin?error=auth_failed' }),
+      passport.authenticate('openidconnect', { failureRedirect: '/?error=forbidden' }),
       (req, res) => res.redirect('/admin'),
     );
   } else {
@@ -84,7 +95,7 @@ function configureAuth(app, { onApex } = {}) {
 
   app.get('/auth/logout', apex, (req, res) => {
     req.logout((err) => {
-      if (err) return res.redirect('/admin?error=logout_failed');
+      if (err) return res.redirect('/?error=logout_failed');
       res.redirect('/');
     });
   });
@@ -92,4 +103,10 @@ function configureAuth(app, { onApex } = {}) {
   return { ensureAuthenticated };
 }
 
-module.exports = { configureAuth };
+module.exports = {
+  configureAuth,
+  decodeJwt,
+  hasClientRole,
+  hasAdminRole,
+  ADMIN_ROLE,
+};
