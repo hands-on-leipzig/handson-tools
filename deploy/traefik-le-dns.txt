@@ -9,9 +9,17 @@
 #   docker compose up -d traefik
 #
 # Token must create/delete TXT _acme-challenge.handson.tools.
+#
+# Hetzner has two DNS APIs — the token must match where the zone lives:
+#   Cloud Console (current): Security → API tokens, Read & Write including DNS
+#     env: HETZNER_API_TOKEN   (Traefik ≥ 3.5.4)
+#   Legacy dns.hetzner.com:   DNS Console → API tokens
+#     env: HETZNER_API_KEY     (Traefik 3.5.0–3.5.3)
+#
+# Check: docker exec traefik traefik version
 
-# environment (Hetzner DNS):
-#   HETZNER_API_KEY: ${HETZNER_API_KEY}
+# environment (Hetzner Cloud DNS):
+#   HETZNER_API_TOKEN: ${HETZNER_API_TOKEN}
 #
 # Cloudflare instead:
 #   CLOUDFLARE_DNS_API_TOKEN: ${CLOUDFLARE_DNS_API_TOKEN}
