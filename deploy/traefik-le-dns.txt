@@ -1,0 +1,22 @@
+# Snippet for the existing Traefik compose on the box.
+# Keep resolver "le" (HTTP-01) for OpenProject and the rest.
+# Add resolver "le-dns" so handson.tools can use a wildcard cert.
+#
+# Merge the extra `command` lines and `environment` into the `traefik` service.
+# Pick ONE DNS provider. Hetzner DNS API example:
+#
+#   environment:
+#     HETZNER_API_KEY: ${HETZNER_API_KEY}
+#
+# Cloudflare:
+#     CLOUDFLARE_DNS_API_TOKEN: ${CLOUDFLARE_DNS_API_TOKEN}
+# and use provider=cloudflare below.
+#
+# Token needs permission to create/delete TXT `_acme-challenge.handson.tools`.
+
+# --- add to traefik.command (leave the existing le HTTP-01 lines as they are) ---
+# - --certificatesresolvers.le-dns.acme.email=${ACME_EMAIL}
+# - --certificatesresolvers.le-dns.acme.storage=/letsencrypt/acme.json
+# - --certificatesresolvers.le-dns.acme.dnschallenge=true
+# - --certificatesresolvers.le-dns.acme.dnschallenge.provider=hetzner
+# - --certificatesresolvers.le-dns.acme.dnschallenge.resolvers=1.1.1.1:53,8.8.8.8:53

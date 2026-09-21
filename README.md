@@ -18,14 +18,16 @@ Unknown apex paths are the one-link: they are proxied to the configured FLOW ori
 
 `/flow/*.png` is proxied to FLOW (logos). Bare `/flow` redirects to `flow.handson.tools`.
 
-## DNS
+## DNS vs TLS
 
-Not one record per app. Publicly:
+Public DNS:
 
 - `handson.tools` A/AAAA → Traefik box
 - `*.handson.tools` A/AAAA → same
 
-Wildcard TLS (`handson.tools` + `*.handson.tools`) needs a Let’s Encrypt **DNS** challenge. `*.handson.tools` does not cover `dev.flow.handson.tools`.
+TLS is one Let’s Encrypt cert covering `handson.tools` **and** `*.handson.tools` (resolver `le-dns`, DNS-01). New app hosts from the admin UI then get HTTPS without Compose changes. Nested names like `dev.flow.handson.tools` are not in that wildcard.
+
+Do **not** replace Traefik’s existing resolver `le` (HTTP-01, OpenProject). Add `le-dns` next to it — see `deploy/traefik-le-dns.txt`. The DNS API token must be allowed to write TXT `_acme-challenge.handson.tools`.
 
 ## Admin
 
@@ -42,12 +44,13 @@ The apex FLOW target is a separate field (one-link catch-all). Event slugs are n
 
 ## Deploy behind existing Traefik
 
-1. Point the two DNS records at the Traefik host.
-2. Join this compose file to Traefik’s docker network (`TRAEFIK_NETWORK`, default `traefik`).
-3. Copy `env.example` → `.env`, set Keycloak + `SESSION_SECRET`.
-4. Wildcard cert resolver on Traefik must use DNS-01.
-5. `docker compose up -d --build`
-6. Add `https://flow.handson.tools/*` (and `https://dev.handson.tools/*` / `https://test.handson.tools/*` if used) to the Keycloak client `flow` redirect URIs.
+Same Docker host, network `proxy`, entrypoint `websecure`, resolver **`le-dns`**.
+
+1. Add `le-dns` to the Traefik compose (`deploy/traefik-le-dns.txt`), restart Traefik.
+2. Point the two DNS records at the Traefik host.
+3. Copy `env.example` → `.env`, set Keycloak + `SESSION_SECRET` (from the current handson.tools server).
+4. `docker compose up -d --build`
+5. Optional: Keycloak client `flow` → `https://flow.handson.tools/*`
 
 `data/shorts.json` is bind-mounted and edited by the admin UI.
 

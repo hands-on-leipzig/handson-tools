@@ -12,17 +12,18 @@ services:
       - "3000"
     labels:
       - traefik.enable=true
-      - traefik.http.routers.handson.rule=Host(`handson.tools`) || HostRegexp(`{sub:[a-z0-9-]+}.handson.tools`)
+      - traefik.docker.network=proxy
+      # Any one-label subdomain. Cert is *.handson.tools via resolver le-dns (DNS-01).
+      - traefik.http.routers.handson.rule=Host(`handson.tools`) || Host(`www.handson.tools`) || HostRegexp(`^[a-z0-9-]+\.handson\.tools$`)
       - traefik.http.routers.handson.entrypoints=websecure
       - traefik.http.routers.handson.tls=true
-      - traefik.http.routers.handson.tls.certresolver=${TRAEFIK_CERT_RESOLVER:-le}
+      - traefik.http.routers.handson.tls.certresolver=le-dns
       - traefik.http.routers.handson.tls.domains[0].main=handson.tools
       - traefik.http.routers.handson.tls.domains[0].sans=*.handson.tools
       - traefik.http.services.handson.loadbalancer.server.port=3000
     networks:
-      - traefik
+      - proxy
 
 networks:
-  traefik:
+  proxy:
     external: true
-    name: ${TRAEFIK_NETWORK:-traefik}
