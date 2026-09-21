@@ -45,16 +45,16 @@ function configureAuth(app, { onApex } = {}) {
       clientSecret,
       callbackURL,
       scope: ['openid', 'profile', 'email'],
-    }, (iss, sub, profile, accessToken, refreshToken, done) => {
+    }, (iss, profile, done) => {
       const email = profile.email || (profile.emails && profile.emails[0] && profile.emails[0].value) || null;
       if (!allowedEmail(email, allowed)) {
         return done(null, false, { message: 'Access denied. Your email is not authorized.' });
       }
       return done(null, {
-        id: sub,
+        id: profile.id,
         email,
-        name: profile.name || profile.displayName || profile.preferred_username,
-        photo: profile.picture || null,
+        name: profile.displayName || profile.username || profile.id,
+        photo: profile.photos && profile.photos[0] && profile.photos[0].value,
       });
     }));
 

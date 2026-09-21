@@ -13,13 +13,13 @@ services:
     labels:
       - traefik.enable=true
       - traefik.docker.network=proxy
-      # Any one-label subdomain. Cert is *.handson.tools via resolver le-dns (DNS-01).
-      - traefik.http.routers.handson.rule=Host(`handson.tools`) || Host(`www.handson.tools`) || HostRegexp(`^[a-z0-9-]+\.handson\.tools$`)
+      # Resolver "le" is the existing HTTP-01 ACME on this Traefik. Wildcard
+      # certs need le-dns (DNS-01) later; until then list each Host() so le
+      # can issue a certificate. HostRegexp still routes other subdomains.
+      - traefik.http.routers.handson.rule=Host(`handson.tools`) || Host(`www.handson.tools`) || Host(`flow.handson.tools`) || Host(`dev.handson.tools`) || Host(`test.handson.tools`) || Host(`rg.handson.tools`) || Host(`jury.handson.tools`) || Host(`pfand.handson.tools`) || HostRegexp(`^[a-z0-9-]+\.handson\.tools$`)
       - traefik.http.routers.handson.entrypoints=websecure
       - traefik.http.routers.handson.tls=true
-      - traefik.http.routers.handson.tls.certresolver=le-dns
-      - traefik.http.routers.handson.tls.domains[0].main=handson.tools
-      - traefik.http.routers.handson.tls.domains[0].sans=*.handson.tools
+      - traefik.http.routers.handson.tls.certresolver=le
       - traefik.http.services.handson.loadbalancer.server.port=3000
     networks:
       - proxy
