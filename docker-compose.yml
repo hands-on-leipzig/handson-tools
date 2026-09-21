@@ -23,7 +23,10 @@ services:
       - traefik.http.services.handson.loadbalancer.server.port=3000
     networks:
       - proxy
+      - egress
 
 networks:
   proxy:
     external: true
+  egress:
+    driver: bridge

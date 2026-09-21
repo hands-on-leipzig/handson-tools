@@ -45,8 +45,15 @@ function configureAuth(app, { onApex } = {}) {
       clientSecret,
       callbackURL,
       scope: ['openid', 'profile', 'email'],
-    }, (iss, profile, done) => {
+    }, function verifyOidc() {
+      // passport-openidconnect picks the callback by .length; take the last
+      // argument as `done` so we do not depend on that arity table.
+      const done = arguments[arguments.length - 1];
+      const profile = arguments[1] || {};
       const email = profile.email || (profile.emails && profile.emails[0] && profile.emails[0].value) || null;
+      if (typeof done !== 'function') {
+        throw new Error('OpenID verify: done is not a function');
+      }
       if (!allowedEmail(email, allowed)) {
         return done(null, false, { message: 'Access denied. Your email is not authorized.' });
       }
