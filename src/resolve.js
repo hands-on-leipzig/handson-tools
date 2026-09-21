@@ -108,7 +108,13 @@ function resolve(req, store, config) {
 
   if (parsed.kind === 'app') {
     const app = appBySlug(apps, parsed.slug);
-    if (!app) return { type: 'unknown-app', slug: parsed.slug };
+    if (!app) {
+      return {
+        type: 'redirect',
+        url: `https://${baseDomain}/`,
+        permanent: false,
+      };
+    }
     const target = withProtocol(app.target);
     const path = pathname === '/' ? '' : pathname;
     if ((app.mode || 'proxy') === 'redirect') {

@@ -88,9 +88,6 @@ function createApp() {
         return res.redirect(decision.permanent ? 301 : 302, decision.url);
       case 'proxy':
         return proxyWeb(proxy, req, res, decision.target, decision.path);
-      case 'unknown-app':
-        res.status(404);
-        return res.send(generateIndexPage(store, baseDomain, `${decision.slug}.${baseDomain}`));
       default:
         res.status(404);
         return res.send(generateIndexPage(store, baseDomain, host));

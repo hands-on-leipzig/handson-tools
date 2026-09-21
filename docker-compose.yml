@@ -29,14 +29,24 @@ services:
     labels:
       - traefik.enable=true
       - traefik.docker.network=proxy
-      # Resolver "le" is the existing HTTP-01 ACME on this Traefik. Wildcard
-      # certs need le-dns (DNS-01) later; until then list each Host() so le
-      # can issue a certificate. HostRegexp still routes other subdomains.
-      - traefik.http.routers.handson.rule=Host(`handson.tools`) || Host(`www.handson.tools`) || Host(`flow.handson.tools`) || Host(`dev.handson.tools`) || Host(`test.handson.tools`) || Host(`rg.handson.tools`) || Host(`jury.handson.tools`) || Host(`pfand.handson.tools`) || HostRegexp(`^[a-z0-9-]+\.handson\.tools$`)
+      # Known names: HTTP-01 resolver "le" (already on this Traefik).
+      - traefik.http.routers.handson.rule=Host(`handson.tools`) || Host(`www.handson.tools`) || Host(`flow.handson.tools`) || Host(`dev.handson.tools`) || Host(`test.handson.tools`) || Host(`rg.handson.tools`) || Host(`jury.handson.tools`) || Host(`pfand.handson.tools`)
       - traefik.http.routers.handson.entrypoints=websecure
+      - traefik.http.routers.handson.priority=20
       - traefik.http.routers.handson.tls=true
       - traefik.http.routers.handson.tls.certresolver=le
       - traefik.http.services.handson.loadbalancer.server.port=3000
+      # Unknown *.handson.tools → same service. Valid cert needs Traefik resolver
+      # le-dns (DNS-01 wildcard). See deploy/traefik-le-dns.txt. Without it Traefik
+      # serves the default cert (ORCA) for names not in the Host() list above.
+      - traefik.http.routers.handson-star.rule=HostRegexp(`^[a-z0-9-]+\.handson\.tools$`)
+      - traefik.http.routers.handson-star.entrypoints=websecure
+      - traefik.http.routers.handson-star.priority=10
+      - traefik.http.routers.handson-star.tls=true
+      - traefik.http.routers.handson-star.tls.certresolver=le-dns
+      - traefik.http.routers.handson-star.tls.domains[0].main=handson.tools
+      - traefik.http.routers.handson-star.tls.domains[0].sans=*.handson.tools
+      - traefik.http.routers.handson-star.service=handson
     networks:
       - egress
       - proxy

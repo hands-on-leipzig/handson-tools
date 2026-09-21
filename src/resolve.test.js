@@ -54,8 +54,12 @@ describe('subdomain apps', () => {
     );
   });
 
-  it('404s unknown subdomains', () => {
-    assert.equal(decide('nope.handson.tools', '/').type, 'unknown-app');
+  it('redirects unknown subdomains to the apex', () => {
+    assert.deepEqual(decide('nope.handson.tools', '/foo', '?x=1'), {
+      type: 'redirect',
+      url: 'https://handson.tools/',
+      permanent: false,
+    });
   });
 });
 
