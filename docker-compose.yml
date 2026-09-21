@@ -1,9 +1,13 @@
 services:
   flow-hop:
-    image: alpine/socat:1.8.0.1
+    image: alpine/socat
     restart: unless-stopped
     network_mode: host
-    command: TCP4-LISTEN:4180,fork,reuseaddr,keepalive TCP6:flow.hands-on-technology.org:443
+    command:
+      - "-d"
+      - "-d"
+      - "TCP-LISTEN:4180,fork,reuseaddr"
+      - "TCP6:flow.hands-on-technology.org:443"
 
   gateway:
     build: .
