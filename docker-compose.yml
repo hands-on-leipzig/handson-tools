@@ -10,10 +10,7 @@ services:
       - "TCP6:flow.hands-on-technology.org:443"
 
   gateway:
-    build:
-      context: .
-      additional_contexts:
-        glass: ../glass
+    build: .
     restart: unless-stopped
     env_file: .env
     extra_hosts:

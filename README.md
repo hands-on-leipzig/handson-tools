@@ -65,7 +65,7 @@ Dev / Test instances should publish their own subdomain, not a path on the apex:
 
 Old links `handson.tools/dev/aachen` 301 to `dev.handson.tools/aachen`.
 
-Sibling checkout of [`glass`](https://github.com/hands-on-leipzig/glass) is required (`@hands-on/glass`: `file:../glass`). Docker Compose passes it as an extra build context (`../glass`). The public index and `/admin` use the shared liquid-glass styles.
+The public index and `/admin` use `@hands-on/glass` from GitHub (`hands-on-leipzig/glass#main`; the lockfile pins the commit). Docker `npm ci` fetches it during the image build.
 
 ## Local
 

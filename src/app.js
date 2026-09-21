@@ -20,7 +20,7 @@ function glassRoot() {
     if (fs.existsSync(path.join(dir, 'styles', 'index.css'))) return dir;
   }
   throw new Error(
-    'Glass design system not found. Install @hands-on/glass (sibling checkout ../glass) or set GLASS_ROOT.',
+    'Glass design system not found. Install @hands-on/glass (npm install) or set GLASS_ROOT.',
   );
 }
 
