@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "apexTarget": "https://flow.hands-on-technology.org",
+  "apps": [
+    { "slug": "flow", "target": "https://flow.hands-on-technology.org", "mode": "proxy" },
+    { "slug": "dev", "target": "https://dev.flow.hands-on-technology.org", "mode": "proxy" },
+    { "slug": "test", "target": "https://test.flow.hands-on-technology.org", "mode": "proxy" },
+    { "slug": "rg", "target": "https://timer.hands-on-technology.org", "mode": "proxy" },
+    { "slug": "jury", "target": "https://jurytimer.hands-on-technology.org", "mode": "proxy" },
+    { "slug": "pfand", "target": "https://pfand.hands-on-technology.org", "mode": "proxy" }
+  ]
+}

@@ -3,4 +3,6 @@ node_modules/
 *.log
 logs/
 .pm2
+data/shorts.json.tmp
+*.tmp
 

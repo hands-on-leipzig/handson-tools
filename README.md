@@ -1,144 +1,75 @@
-# Domain Shortener
+# handson.tools gateway
 
-A simple domain shortener service that redirects short URLs to full domain targets.
+Vanity host for Hands-on apps. Traefik terminates TLS; this process routes.
 
-## Setup
+## How it routes
 
-1. Install dependencies:
+| Request | Result |
+|---|---|
+| `handson.tools/norderstedt` | Proxy to FLOW (address bar stays) |
+| `handson.tools/2025/aachen` | Same, past season |
+| `flow.handson.tools/…` | Proxy to FLOW (planner, API, everything) |
+| `rg.handson.tools/…` | Proxy to the timer (or whatever the admin set) |
+| `handson.tools/rg` | 301 → `rg.handson.tools` (old path shorts) |
+| `handson.tools/plan/…` | 302 → `flow.handson.tools/plan/…` |
+| `handson.tools/admin` | This app’s admin UI |
+
+Unknown apex paths are the one-link: they are proxied to the configured FLOW origin, including `/api` and `/assets` so the public event page can load.
+
+`/flow/*.png` is proxied to FLOW (logos). Bare `/flow` redirects to `flow.handson.tools`.
+
+## DNS
+
+Not one record per app. Publicly:
+
+- `handson.tools` A/AAAA → Traefik box
+- `*.handson.tools` A/AAAA → same
+
+Wildcard TLS (`handson.tools` + `*.handson.tools`) needs a Let’s Encrypt **DNS** challenge. `*.handson.tools` does not cover `dev.flow.handson.tools`.
+
+## Admin
+
+`https://handson.tools/admin` (Keycloak).
+
+Each short is:
+
+- **Slug** → `{slug}.handson.tools`
+- **Target** → origin to proxy or redirect to
+- **Proxy** — subdomain stays in the address bar
+- **Redirect** — browser is sent to the target host
+
+The apex FLOW target is a separate field (one-link catch-all). Event slugs are not entered here; FLOW owns them.
+
+## Deploy behind existing Traefik
+
+1. Point the two DNS records at the Traefik host.
+2. Join this compose file to Traefik’s docker network (`TRAEFIK_NETWORK`, default `traefik`).
+3. Copy `env.example` → `.env`, set Keycloak + `SESSION_SECRET`.
+4. Wildcard cert resolver on Traefik must use DNS-01.
+5. `docker compose up -d --build`
+6. Add `https://flow.handson.tools/*` (and `https://dev.handson.tools/*` / `https://test.handson.tools/*` if used) to the Keycloak client `flow` redirect URIs.
+
+`data/shorts.json` is bind-mounted and edited by the admin UI.
+
+## FLOW env
+
+Production one-link stays `PUBLIC_URL=https://handson.tools`.
+
+Dev / Test instances should publish their own subdomain, not a path on the apex:
+
+- Dev → `PUBLIC_URL=https://dev.handson.tools`
+- Test → `PUBLIC_URL=https://test.handson.tools`
+
+Old links `handson.tools/dev/aachen` 301 to `dev.handson.tools/aachen`.
+
+## Local
+
 ```bash
 npm install
+npm test
+COOKIE_SECURE=false NODE_ENV=development BASE_DOMAIN=handson.tools npm start
 ```
 
-2. Start the server (choose one method):
+Subdomains need `/etc/hosts` (or similar) for `flow.handson.tools`, `rg.handson.tools`, … pointing at localhost, plus a reverse proxy that forwards the `Host` header.
 
-**Option A: Run in background with PM2 (Recommended for production):**
-```bash
-npm install
-npm run pm2:start
-```
-
-**Option B: Run directly (for development):**
-```bash
-npm start
-```
-
-The server will run on port 3000 by default (or the port specified in the `PORT` environment variable).
-
-## Usage
-
-### Adding URL Mappings
-
-Edit the `urls.json` file to add your slug-to-URL mappings:
-
-```json
-{
-  "slug": "full.domain.target",
-  "example": "example.com",
-  "github": "github.com"
-}
-```
-
-You can use either:
-- Full URLs: `"https://example.com"`
-- Domain names: `"example.com"` (will automatically add `https://`)
-
-### Accessing Short URLs
-
-Once the server is running, access your short URLs like:
-- `http://localhost:3000/slug` → redirects to `full.domain.target`
-- `http://localhost:3000/example` → redirects to `example.com`
-
-### Apache Configuration
-
-If you're using Apache and getting "file not found" errors, you need to configure Apache to proxy requests to the Node.js server:
-
-1. **Enable required Apache modules:**
-   ```bash
-   sudo a2enmod rewrite
-   sudo a2enmod proxy
-   sudo a2enmod proxy_http
-   sudo systemctl restart apache2
-   ```
-
-2. **The `.htaccess` file is already included** - it will proxy all requests to your Node.js server running on port 3000.
-
-3. **If your Node.js server runs on a different port**, edit `.htaccess` and change `localhost:3000` to your port.
-
-4. **Make sure your Apache virtual host allows `.htaccess` overrides:**
-   ```apache
-   <Directory /path/to/your/project>
-       AllowOverride All
-   </Directory>
-   ```
-
-### Running in Background with PM2
-
-PM2 keeps your server running in the background and automatically restarts it if it crashes:
-
-1. **Start the server:**
-   ```bash
-   npm run pm2:start
-   ```
-
-2. **Check status:**
-   ```bash
-   npm run pm2:status
-   ```
-
-3. **View logs:**
-   ```bash
-   npm run pm2:logs
-   ```
-
-4. **Restart the server:**
-   ```bash
-   npm run pm2:restart
-   ```
-
-5. **Stop the server:**
-   ```bash
-   npm run pm2:stop
-   ```
-
-6. **Make PM2 start on system boot:**
-
-   **Option A: With sudo rights (Linux):**
-   ```bash
-   pm2 startup
-   pm2 save
-   ```
-
-   **Option B: Without sudo rights (using cron):**
-   ```bash
-   # Edit your crontab
-   crontab -e
-   
-   # Add this line (adjust the path to your project):
-   @reboot /path/to/handson-tools/start-pm2.sh >> /path/to/handson-tools/logs/cron.log 2>&1
-   ```
-
-PM2 will automatically restart your server if it crashes, and you can configure it to start on system boot.
-
-### Production Deployment
-
-For production with your domain `short.ly`:
-
-1. Set up your domain to point to your server
-2. Install dependencies and start with PM2:
-   ```bash
-   npm install
-   npm run pm2:start
-   pm2 startup  # Make it start on boot
-   pm2 save
-   ```
-3. Configure Apache as described above
-4. The service will automatically handle requests to `short.ly/slug` and redirect accordingly
-
-## File Structure
-
-- `server.js` - Main server application
-- `urls.json` - Storage file for slug-to-URL mappings
-- `package.json` - Node.js dependencies
-- `ecosystem.config.js` - PM2 configuration file
-- `.htaccess` - Apache configuration to proxy requests to Node.js server
-
+Until Traefik owns the domain, the existing Apache vhost can keep proxying everything to Node — add `ServerAlias *.handson.tools` so app hosts hit the same process.

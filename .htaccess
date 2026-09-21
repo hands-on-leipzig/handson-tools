@@ -11,7 +11,7 @@ DirectoryIndex disabled
 
 # Never hand out the application itself. Without this, Apache serves any existing file
 # in this directory — including .env with the Keycloak client secret.
-<FilesMatch "^(\.|env\.example$|urls\.json$|server\.js$|package(-lock)?\.json$|ecosystem\.config\.js$|start-pm2\.sh$|.*\.md$)">
+<FilesMatch "^(\.|env\.example$|urls\.json$|shorts\.json$|server\.js$|package(-lock)?\.json$|ecosystem\.config\.js$|start-pm2\.sh$|.*\.md$)">
   Require all denied
 </FilesMatch>
 

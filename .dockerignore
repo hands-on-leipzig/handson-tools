@@ -1,0 +1,10 @@
+node_modules
+.git
+.idea
+logs
+.env
+*.md
+.htaccess
+urls.json
+ecosystem.config.js
+start-pm2.sh
