@@ -65,6 +65,8 @@ Dev / Test instances should publish their own subdomain, not a path on the apex:
 
 Old links `handson.tools/dev/aachen` 301 to `dev.handson.tools/aachen`.
 
+Sibling checkout of [`glass`](https://github.com/hands-on-leipzig/glass) is required (`@hands-on/glass`: `file:../glass`). Docker Compose passes it as an extra build context (`../glass`). The public index and `/admin` use the shared liquid-glass styles.
+
 ## Local
 
 ```bash
@@ -72,6 +74,8 @@ npm install
 npm test
 COOKIE_SECURE=false NODE_ENV=development BASE_DOMAIN=handson.tools npm start
 ```
+
+With `NODE_ENV=development`, `http://localhost:3000` is treated as the apex so the Glass UI can be previewed without a `Host` header.
 
 Subdomains need `/etc/hosts` (or similar) for `flow.handson.tools`, `rg.handson.tools`, … pointing at localhost, plus a reverse proxy that forwards the `Host` header.
 

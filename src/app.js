@@ -1,3 +1,4 @@
+const fs = require('fs');
 const path = require('path');
 const express = require('express');
 const bodyParser = require('body-parser');
@@ -9,19 +10,42 @@ const { createProxy, proxyWeb } = require('./proxy');
 
 const STATIC_FILES = ['favicon.ico', 'hot.png'];
 
+function glassRoot() {
+  const candidates = [
+    process.env.GLASS_ROOT,
+    path.join(__dirname, '..', 'node_modules', '@hands-on', 'glass'),
+    path.join(__dirname, '..', '..', 'glass'),
+  ].filter(Boolean);
+  for (const dir of candidates) {
+    if (fs.existsSync(path.join(dir, 'styles', 'index.css'))) return dir;
+  }
+  throw new Error(
+    'Glass design system not found. Install @hands-on/glass (sibling checkout ../glass) or set GLASS_ROOT.',
+  );
+}
+
 function createApp() {
   const app = express();
   const baseDomain = (process.env.BASE_DOMAIN || 'handson.tools').toLowerCase();
   const proxy = createProxy();
   let store = loadStore();
+  const glassDir = glassRoot();
 
   app.disable('x-powered-by');
   app.use(bodyParser.json());
   app.use(bodyParser.urlencoded({ extended: true }));
 
+  function requestHost(req) {
+    return (req.headers.host || '').split(':')[0].toLowerCase();
+  }
+
+  function isLocalPreviewHost(host) {
+    return process.env.NODE_ENV !== 'production' && (host === 'localhost' || host === '127.0.0.1');
+  }
+
   function onApex(req, res, next) {
-    const host = (req.headers.host || '').split(':')[0].toLowerCase();
-    if (host === baseDomain || host === `www.${baseDomain}`) return next();
+    const host = requestHost(req);
+    if (host === baseDomain || host === `www.${baseDomain}` || isLocalPreviewHost(host)) return next();
     next('route');
   }
 
@@ -31,10 +55,17 @@ function createApp() {
     });
   });
 
+  app.get('/app.css', onApex, (req, res) => {
+    res.sendFile(path.join(__dirname, '..', 'public', 'app.css'));
+  });
+
+  app.use('/glass/styles', onApex, express.static(path.join(glassDir, 'styles'), { fallthrough: false }));
+  app.use('/glass/fonts', onApex, express.static(path.join(glassDir, 'fonts'), { fallthrough: false }));
+
   const { ensureAuthenticated } = configureAuth(app, { onApex });
 
   app.get('/admin', onApex, ensureAuthenticated, (req, res) => {
-    res.send(generateAdminPage(store, baseDomain, req.user || {}));
+    res.send(generateAdminPage(store, baseDomain, req.user || {}, req.query || {}));
   });
 
   app.get('/admin/api/apps', onApex, ensureAuthenticated, (req, res) => {
@@ -70,7 +101,7 @@ function createApp() {
   });
 
   app.use((req, res) => {
-    const host = req.headers.host || '';
+    const host = isLocalPreviewHost(requestHost(req)) ? baseDomain : (req.headers.host || '');
     const decision = resolve(
       { host, pathname: req.path, search: req.url.includes('?') ? req.url.slice(req.url.indexOf('?')) : '' },
       store,

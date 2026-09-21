@@ -17,6 +17,7 @@
   "keywords": ["gateway", "reverse-proxy", "handson.tools"],
   "license": "MIT",
   "dependencies": {
+    "@hands-on/glass": "file:../glass",
     "body-parser": "^1.20.2",
     "dotenv": "^10.0.0",
     "express": "^4.18.2",

@@ -1,170 +1,140 @@
 const { escapeHtml } = require('./escape');
 
-const STYLES = `
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-  body {
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    background: linear-gradient(135deg, #F78B1F 0%, #ff9f40 100%);
-    min-height: 100vh;
-    padding: 20px;
-  }
-  .container {
-    background: white;
-    border-radius: 20px;
-    box-sizing: border-box;
-    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-    max-width: 960px;
-    width: 100%;
-    margin: 20px auto;
-    padding: 40px;
-  }
-  h1 { color: #F78B1F; font-size: 2rem; margin-bottom: 8px; }
-  h2 { color: #333; font-size: 1.2rem; margin: 28px 0 12px; }
-  .subtitle { color: #666; margin-bottom: 24px; }
-  .logo { max-width: 96px; display: block; margin: 0 auto 16px; }
-  .header { display: flex; justify-content: space-between; align-items: center; gap: 16px; margin-bottom: 24px; padding-bottom: 16px; border-bottom: 2px solid #f0f0f0; }
-  .url-item, .card {
-    background: #f8f9fa;
-    border-left: 4px solid #F78B1F;
-    border-radius: 8px;
-    padding: 16px 20px;
-    margin-bottom: 12px;
-  }
-  .slug { font-weight: 600; color: #F78B1F; font-size: 1.1rem; text-decoration: none; }
-  .target { color: #666; font-size: 0.95rem; margin-top: 4px; word-break: break-all; }
-  .mode { display: inline-block; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.04em; background: #fff; border-radius: 999px; padding: 2px 8px; margin-left: 8px; color: #333; }
-  .row { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
-  .form-group { margin-bottom: 12px; }
-  label { display: block; font-weight: 600; margin-bottom: 4px; }
-  input, select {
-    width: 100%;
-    padding: 10px;
-    border: 2px solid #ddd;
-    border-radius: 8px;
-    font-size: 1rem;
-  }
-  .btn { padding: 10px 16px; border: none; border-radius: 8px; cursor: pointer; font-size: 1rem; text-decoration: none; display: inline-block; }
-  .btn-primary { background: #F78B1F; color: white; }
-  .btn-danger { background: #dc3545; color: white; }
-  .btn-small { padding: 6px 10px; font-size: 0.9rem; }
-  .message { padding: 12px 16px; border-radius: 8px; margin-bottom: 16px; display: none; }
-  .message-success { background: #d4edda; color: #155724; display: block; }
-  .message-error { background: #f8d7da; color: #721c24; display: block; }
-  .muted { color: #888; font-size: 0.9rem; }
+const THEME_BOOT = `
+(function () {
+  try {
+    var stored = localStorage.getItem('hands-on-theme') || localStorage.getItem('node-theme');
+    if (stored === 'dark' || stored === 'light') {
+      document.documentElement.setAttribute('data-theme', stored);
+    }
+  } catch (e) {}
+})();
 `;
+
+const THEME_SCRIPT = `
+(function () {
+  var KEY = 'hands-on-theme';
+  function current() {
+    return document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light';
+  }
+  function apply(theme) {
+    document.documentElement.setAttribute('data-theme', theme);
+    try { localStorage.setItem(KEY, theme); } catch (e) {}
+    document.querySelectorAll('[data-theme-set]').forEach(function (btn) {
+      var on = btn.getAttribute('data-theme-set') === theme;
+      btn.classList.toggle('active', on);
+      btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+    });
+  }
+  document.querySelectorAll('[data-theme-set]').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      apply(btn.getAttribute('data-theme-set'));
+    });
+  });
+  apply(current());
+})();
+`;
+
+function themeToggle() {
+  return `
+    <div class="page-theme glass-sidebar-footer__prefs-row" role="group" aria-label="Darstellung">
+      <button type="button" class="glass-sidebar-footer__pref-btn" data-theme-set="light" aria-pressed="true">Hell</button>
+      <button type="button" class="glass-sidebar-footer__pref-btn" data-theme-set="dark" aria-pressed="false">Dunkel</button>
+    </div>`;
+}
+
+function layout({ title, body, script = '', wide = false }) {
+  return `<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${escapeHtml(title)}</title>
+  <link rel="icon" href="/favicon.ico">
+  <script>${THEME_BOOT}</script>
+  <link rel="stylesheet" href="/glass/styles/index.css">
+  <link rel="stylesheet" href="/app.css">
+</head>
+<body>
+  <div class="page${wide ? ' page--wide' : ''} liquid-surface-scope">
+    ${body}
+  </div>
+  <script>${THEME_SCRIPT}${script}</script>
+</body>
+</html>`;
+}
+
+function flash(text, kind) {
+  if (!text) return '';
+  const cls = kind === 'ok' ? 'flash--ok' : 'flash--err';
+  return `<div class="flash is-visible ${cls} liquid-surface-inner" role="status">${escapeHtml(text)}</div>`;
+}
 
 function generateIndexPage(store, baseDomain, notFoundSlug = null) {
   const apps = store.apps || [];
   const notFound = notFoundSlug
-    ? `<div class="message message-error">Unbekannt: ${escapeHtml(notFoundSlug)}</div>`
+    ? flash(`Unbekannt: ${notFoundSlug}`, 'err')
     : '';
 
   const items = apps.map((app) => {
     const host = `${app.slug}.${baseDomain}`;
     return `
-      <li class="url-item">
-        <a class="slug" href="https://${escapeHtml(host)}">${escapeHtml(host)}</a>
-        <span class="mode">${escapeHtml(app.mode)}</span>
-        <div class="target">→ ${escapeHtml(app.target)}</div>
+      <li class="app-row liquid-surface-inner">
+        <div class="app-row__top">
+          <div>
+            <a class="app-host" href="https://${escapeHtml(host)}">${escapeHtml(host)}</a>
+            <div class="app-target">→ ${escapeHtml(app.target)}</div>
+          </div>
+          <span class="mode">${escapeHtml(app.mode)}</span>
+        </div>
       </li>`;
   }).join('');
 
-  return `<!DOCTYPE html>
-<html lang="de">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>handson.tools</title>
-  <link rel="icon" href="/favicon.ico">
-  <style>${STYLES}</style>
-</head>
-<body>
-  <div class="container">
-    <img src="/hot.png" alt="" class="logo">
-    <h1>handson.tools</h1>
-    <p class="subtitle">One-Link: <code>${escapeHtml(baseDomain)}/&lt;event&gt;</code> · Apps auf Subdomains</p>
+  return layout({
+    title: 'handson.tools',
+    body: `
+    <section class="page-hero liquid-surface liquid-surface--accent">
+      <img src="/hot.png" alt="" class="page-logo">
+      <p class="page-kicker">Gateway</p>
+      <h1>handson.tools</h1>
+      <p class="page-lead">One-Link: <code>${escapeHtml(baseDomain)}/&lt;event&gt;</code> · Apps auf Subdomains</p>
+      <div class="page-toolbar">${themeToggle()}</div>
+    </section>
     ${notFound}
-    ${apps.length ? `<ul style="list-style:none">${items}</ul>` : '<p class="muted">Noch keine Apps.</p>'}
-  </div>
-</body>
-</html>`;
+    ${apps.length
+      ? `<ul class="list">${items}</ul>`
+      : '<p class="muted">Noch keine Apps.</p>'}`,
+  });
 }
 
-function generateAdminPage(store, baseDomain, user) {
+function adminErrorMessage(error) {
+  if (error === 'auth_failed') return 'Anmeldung fehlgeschlagen.';
+  if (error === 'logout_failed') return 'Abmelden fehlgeschlagen.';
+  return '';
+}
+
+function generateAdminPage(store, baseDomain, user, query = {}) {
   const apps = store.apps || [];
   const rows = apps.map((app) => `
-    <li class="url-item">
-      <div class="row">
+    <li class="app-row liquid-surface-inner">
+      <div class="app-row__top">
         <div>
-          <div class="slug">${escapeHtml(app.slug)}.${escapeHtml(baseDomain)}</div>
-          <div class="target">→ ${escapeHtml(app.target)}</div>
+          <div class="app-host">${escapeHtml(app.slug)}.${escapeHtml(baseDomain)}</div>
+          <div class="app-target">→ ${escapeHtml(app.target)}</div>
         </div>
-        <div>
+        <div class="app-row__actions">
           <span class="mode">${escapeHtml(app.mode)}</span>
-          <button class="btn btn-danger btn-small" data-delete="${escapeHtml(app.slug)}">Löschen</button>
+          <button class="glass-btn-danger glass-btn--sm" type="button" data-delete="${escapeHtml(app.slug)}">Löschen</button>
         </div>
       </div>
     </li>`).join('');
 
-  return `<!DOCTYPE html>
-<html lang="de">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Admin · handson.tools</title>
-  <style>${STYLES}</style>
-</head>
-<body>
-  <div class="container">
-    <div class="header">
-      <h1>Shorts</h1>
-      <div>
-        <strong>${escapeHtml(user.name || user.email || '')}</strong>
-        <a class="btn btn-danger btn-small" href="/auth/logout">Logout</a>
-      </div>
-    </div>
-
-    <div class="card">
-      <h2>Apex / One-Link</h2>
-      <p class="muted" style="margin-bottom:12px">${escapeHtml(baseDomain)}/norderstedt → dieser Host (Proxy, URL bleibt).</p>
-      <form id="apexForm">
-        <div class="form-group">
-          <label for="apexTarget">FLOW-Ziel</label>
-          <input id="apexTarget" name="apexTarget" value="${escapeHtml(store.apexTarget)}" required>
-        </div>
-        <button class="btn btn-primary" type="submit">Speichern</button>
-      </form>
-    </div>
-
-    <h2>App hinzufügen</h2>
-    <form id="addForm" class="card">
-      <div class="form-group">
-        <label for="slug">Slug (wird zu slug.${escapeHtml(baseDomain)})</label>
-        <input id="slug" name="slug" placeholder="rg" required>
-      </div>
-      <div class="form-group">
-        <label for="target">Ziel</label>
-        <input id="target" name="target" placeholder="https://timer.hands-on-technology.org" required>
-      </div>
-      <div class="form-group">
-        <label for="mode">Modus</label>
-        <select id="mode" name="mode">
-          <option value="proxy">Proxy — Subdomain bleibt in der Adresszeile</option>
-          <option value="redirect">Redirect — weiter zum Ziel-Host</option>
-        </select>
-      </div>
-      <button class="btn btn-primary" type="submit">Speichern</button>
-    </form>
-
-    <div id="message" class="message"></div>
-    <h2>Apps</h2>
-    <ul style="list-style:none">${rows}</ul>
-  </div>
-  <script>
+  const script = `
     function showMessage(text, type) {
       const el = document.getElementById('message');
-      el.className = 'message message-' + type;
+      el.className = 'flash is-visible liquid-surface-inner flash--' + (type === 'success' ? 'ok' : 'err');
       el.textContent = text;
+      el.hidden = false;
     }
 
     document.getElementById('addForm').addEventListener('submit', async (e) => {
@@ -206,9 +176,71 @@ function generateAdminPage(store, baseDomain, user) {
         else showMessage(data.error || 'Fehler', 'error');
       });
     });
-  </script>
-</body>
-</html>`;
+  `;
+
+  const userLabel = user.name || user.email || '';
+
+  return layout({
+    title: 'Admin · handson.tools',
+    wide: true,
+    script,
+    body: `
+    <section class="page-hero liquid-surface liquid-surface--accent">
+      <p class="page-kicker">handson.tools</p>
+      <h1>Shorts</h1>
+      <div class="page-toolbar">
+        <span class="page-user">${escapeHtml(userLabel)}</span>
+        ${themeToggle()}
+        <a class="glass-btn-secondary glass-btn--sm" href="/auth/logout">Logout</a>
+      </div>
+    </section>
+
+    ${flash(adminErrorMessage(query.error), 'err')}
+    <div id="message" class="flash liquid-surface-inner"></div>
+
+    <section class="section liquid-surface">
+      <h2>Apex / One-Link</h2>
+      <p class="muted" style="margin-bottom:0.85rem">${escapeHtml(baseDomain)}/norderstedt → dieser Host (Proxy, URL bleibt).</p>
+      <form id="apexForm">
+        <label class="glass-field">
+          <span class="glass-field__label">FLOW-Ziel</span>
+          <input class="glass-input liquid-surface-control" id="apexTarget" name="apexTarget" value="${escapeHtml(store.apexTarget)}" required>
+        </label>
+        <div class="form-actions">
+          <button class="glass-btn-accent" type="submit">Speichern</button>
+        </div>
+      </form>
+    </section>
+
+    <section class="section liquid-surface">
+      <h2>App hinzufügen</h2>
+      <form id="addForm">
+        <label class="glass-field">
+          <span class="glass-field__label">Slug (wird zu slug.${escapeHtml(baseDomain)})</span>
+          <input class="glass-input liquid-surface-control" id="slug" name="slug" placeholder="rg" required>
+        </label>
+        <label class="glass-field">
+          <span class="glass-field__label">Ziel</span>
+          <input class="glass-input liquid-surface-control" id="target" name="target" placeholder="https://timer.hands-on-technology.org" required>
+        </label>
+        <label class="glass-field">
+          <span class="glass-field__label">Modus</span>
+          <select class="select-fancy" id="mode" name="mode">
+            <option value="proxy">Proxy — Subdomain bleibt in der Adresszeile</option>
+            <option value="redirect">Redirect — weiter zum Ziel-Host</option>
+          </select>
+        </label>
+        <div class="form-actions">
+          <button class="glass-btn-accent" type="submit">Speichern</button>
+        </div>
+      </form>
+    </section>
+
+    <section class="section liquid-surface">
+      <h2>Apps</h2>
+      ${apps.length ? `<ul class="list">${rows}</ul>` : '<p class="muted">Noch keine Apps.</p>'}
+    </section>`,
+  });
 }
 
 module.exports = { generateIndexPage, generateAdminPage };

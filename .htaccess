@@ -18,8 +18,8 @@ DirectoryIndex disabled
 # Proxy all requests to Node.js on port 3000 (HTTP)
 # The [P] flag proxies internally - URL stays as handson.tools (no :3000)
 # Apache handles HTTPS termination, then proxies to Node.js internally
-# Everything goes to Node, which also serves the two public assets (favicon.ico,
-# hot.png). Letting Apache answer for existing files first would expose the rest.
+# Everything goes to Node, which also serves public assets (favicon.ico, hot.png,
+# Glass CSS/fonts). Letting Apache answer for existing files first would expose the rest.
 
 # Explicitly handle root path
 RewriteRule ^$ http://127.0.0.1:3000/ [P,L]

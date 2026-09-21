@@ -119,9 +119,10 @@ describe('apex one-link', () => {
     });
   });
 
-  it('keeps /admin and /auth on the gateway', () => {
+  it('keeps /admin, /auth and /glass on the gateway', () => {
     assert.equal(decide('handson.tools', '/admin').type, 'gateway');
     assert.equal(decide('handson.tools', '/auth/keycloak').type, 'gateway');
+    assert.equal(decide('handson.tools', '/glass/styles/index.css').type, 'gateway');
   });
 
   it('blocks FLOW service-worker files on the apex', () => {
@@ -147,6 +148,7 @@ describe('slugs', () => {
     assert.equal(isValidSlug('rg'), true);
     assert.equal(isValidSlug('norderstedt'), true);
     assert.equal(isValidSlug('admin'), false);
+    assert.equal(isValidSlug('glass'), false);
     assert.equal(isValidSlug('plan'), false);
     assert.equal(isValidSlug('api'), false);
     assert.equal(isValidSlug('FLOW'), false);
