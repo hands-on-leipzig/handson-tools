@@ -123,6 +123,7 @@ describe('apex one-link', () => {
     assert.equal(decide('handson.tools', '/admin').type, 'gateway');
     assert.equal(decide('handson.tools', '/auth/keycloak').type, 'gateway');
     assert.equal(decide('handson.tools', '/glass/styles/index.css').type, 'gateway');
+    assert.equal(decide('handson.tools', '/icons/bootstrap-icons.css').type, 'gateway');
   });
 
   it('blocks FLOW service-worker files on the apex', () => {
@@ -149,6 +150,7 @@ describe('slugs', () => {
     assert.equal(isValidSlug('norderstedt'), true);
     assert.equal(isValidSlug('admin'), false);
     assert.equal(isValidSlug('glass'), false);
+    assert.equal(isValidSlug('icons'), false);
     assert.equal(isValidSlug('plan'), false);
     assert.equal(isValidSlug('api'), false);
     assert.equal(isValidSlug('FLOW'), false);

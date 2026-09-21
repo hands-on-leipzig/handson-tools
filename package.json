@@ -14,11 +14,15 @@
     "pm2:logs": "pm2 logs domain-shortener",
     "pm2:status": "pm2 status"
   },
-  "keywords": ["gateway", "reverse-proxy", "handson.tools"],
+  "keywords": [
+    "gateway",
+    "reverse-proxy",
+    "handson.tools"
+  ],
   "license": "MIT",
   "dependencies": {
     "@hands-on/glass": "git+https://github.com/hands-on-leipzig/glass.git#main",
-    "body-parser": "^1.20.2",
+    "bootstrap-icons": "^1.13.1",
     "dotenv": "^10.0.0",
     "express": "^4.18.2",
     "express-session": "^1.17.3",

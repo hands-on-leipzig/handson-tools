@@ -8,11 +8,14 @@ const store = {
 };
 
 describe('pages', () => {
-  it('renders the index with glass chrome', () => {
+  it('renders the index in the Glass app shell', () => {
     const html = generateIndexPage(store, 'handson.tools');
-    assert.match(html, /\/glass\/styles\/index\.css/);
-    assert.match(html, /liquid-surface/);
+    assert.match(html, /glass-app liquid-surface-scope/);
+    assert.match(html, /glass-sidebar/);
+    assert.match(html, /bi-gear-fill/);
+    assert.match(html, /Apps verwalten/);
     assert.match(html, /rg\.handson\.tools/);
+    assert.match(html, /Timer an den Robot-Game-Tischen/);
     assert.match(html, /data-theme-set="dark"/);
   });
 
@@ -21,12 +24,14 @@ describe('pages', () => {
     assert.match(html, /handson-tools-admin/);
   });
 
-  it('renders the admin with glass fields and buttons', () => {
+  it('renders admin inside the shell, with account in the footer', () => {
     const html = generateAdminPage(store, 'handson.tools', { name: 'Ada' }, { error: 'auth_failed' });
+    assert.match(html, /glass-app/);
     assert.match(html, /glass-input liquid-surface-control/);
     assert.match(html, /glass-btn-accent/);
     assert.match(html, /glass-btn-danger/);
     assert.match(html, /Ada/);
+    assert.match(html, /\/auth\/logout/);
     assert.match(html, /Anmeldung fehlgeschlagen/);
   });
 });

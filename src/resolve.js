@@ -6,7 +6,7 @@
  * handson.tools/norderstedt stays in the address bar.
  */
 
-const GATEWAY_PREFIXES = new Set(['admin', 'auth', 'glass']);
+const GATEWAY_PREFIXES = new Set(['admin', 'auth', 'glass', 'icons']);
 
 /** First path segment of FLOW planner / auth surfaces — send those to flow.{base}. */
 const PLANNER_PREFIXES = new Set([
@@ -175,7 +175,7 @@ function reservedSlugs() {
     ...GATEWAY_PREFIXES,
     ...PLANNER_PREFIXES,
     'www', 's', 'api', 'assets', 'build', 'storage', 'carousel',
-    'public-schedule', 'scores', 'favicon.ico', 'hot.png', 'app.css', 'glass',
+    'public-schedule', 'scores', 'favicon.ico', 'hot.png', 'app.css', 'glass', 'icons',
   ]);
 }
 

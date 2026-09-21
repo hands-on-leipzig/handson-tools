@@ -59,8 +59,17 @@ function createApp() {
     res.sendFile(path.join(__dirname, '..', 'public', 'app.css'));
   });
 
+  app.get('/shell.js', onApex, (req, res) => {
+    res.sendFile(path.join(__dirname, '..', 'public', 'shell.js'));
+  });
+
   app.use('/glass/styles', onApex, express.static(path.join(glassDir, 'styles'), { fallthrough: false }));
   app.use('/glass/fonts', onApex, express.static(path.join(glassDir, 'fonts'), { fallthrough: false }));
+  app.use(
+    '/icons',
+    onApex,
+    express.static(path.join(__dirname, '..', 'node_modules', 'bootstrap-icons', 'font'), { fallthrough: false }),
+  );
 
   const { ensureAuthenticated } = configureAuth(app, { onApex });
 
@@ -112,7 +121,7 @@ function createApp() {
       case 'gateway':
         return res.status(404).send('Not found');
       case 'index':
-        return res.send(generateIndexPage(store, baseDomain, null, req.query || {}));
+        return res.send(generateIndexPage(store, baseDomain, null, req.query || {}, req.user || null));
       case 'block':
         return res.status(404).end();
       case 'redirect':
@@ -121,7 +130,7 @@ function createApp() {
         return proxyWeb(proxy, req, res, decision.target, decision.path);
       default:
         res.status(404);
-        return res.send(generateIndexPage(store, baseDomain, host));
+        return res.send(generateIndexPage(store, baseDomain, host, {}, req.user || null));
     }
   });
 
