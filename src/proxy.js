@@ -1,4 +1,23 @@
+const http = require('http');
+const https = require('https');
 const httpProxy = require('http-proxy');
+
+const ipv6HttpsAgent = new https.Agent({ family: 6, keepAlive: true });
+const ipv6HttpAgent = new http.Agent({ family: 6, keepAlive: true });
+
+function isFlowHostname(hostname) {
+  return hostname === 'flow.hands-on-technology.org'
+    || hostname.endsWith('.flow.hands-on-technology.org');
+}
+
+function agentFor(target) {
+  try {
+    if (!isFlowHostname(new URL(target).hostname)) return undefined;
+  } catch {
+    return undefined;
+  }
+  return /^https:/i.test(target) ? ipv6HttpsAgent : ipv6HttpAgent;
+}
 
 function describeError(error) {
   if (error == null) return { error: String(error) };
@@ -51,7 +70,13 @@ function proxyWeb(proxy, req, res, target, rewritePath) {
   if (rewritePath) {
     req.url = rewritePath.startsWith('/') ? rewritePath : `/${rewritePath}`;
   }
-  proxy.web(req, res, { target, changeOrigin: true, xfwd: true, secure: true });
+  proxy.web(req, res, {
+    target,
+    changeOrigin: true,
+    xfwd: true,
+    secure: true,
+    agent: agentFor(target),
+  });
 }
 
 module.exports = { createProxy, proxyWeb };

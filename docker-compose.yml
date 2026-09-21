@@ -22,11 +22,16 @@ services:
       - traefik.http.routers.handson.tls.certresolver=le
       - traefik.http.services.handson.loadbalancer.server.port=3000
     networks:
-      - proxy
       - egress
+      - proxy
 
 networks:
   proxy:
     external: true
   egress:
     driver: bridge
+    enable_ipv6: true
+    ipam:
+      config:
+        - subnet: 172.30.90.0/24
+        - subnet: fd4c:1a7b:9e20:1::/64
