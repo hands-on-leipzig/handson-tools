@@ -1,15 +1,27 @@
 services:
+  flow-hop:
+    image: alpine/socat:1.8.0.1
+    restart: unless-stopped
+    network_mode: host
+    command: TCP4-LISTEN:4180,fork,reuseaddr,keepalive TCP6:flow.hands-on-technology.org:443
+
   gateway:
     build: .
     restart: unless-stopped
     env_file: .env
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     environment:
       NODE_ENV: production
       PORT: "3000"
+      FLOW_HOP_HOST: host.docker.internal
+      FLOW_HOP_PORT: "4180"
     volumes:
       - ./data:/app/data
     expose:
       - "3000"
+    depends_on:
+      - flow-hop
     labels:
       - traefik.enable=true
       - traefik.docker.network=proxy
@@ -30,8 +42,3 @@ networks:
     external: true
   egress:
     driver: bridge
-    enable_ipv6: true
-    ipam:
-      config:
-        - subnet: 172.30.90.0/24
-        - subnet: fd4c:1a7b:9e20:1::/64
