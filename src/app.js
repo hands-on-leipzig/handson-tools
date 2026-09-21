@@ -3,7 +3,7 @@ const path = require('path');
 const express = require('express');
 const bodyParser = require('body-parser');
 const { configureAuth } = require('./auth');
-const { loadStore, upsertApp, deleteApp, setApexTarget } = require('./shortsStore');
+const { loadStore, upsertApp, deleteApp, setListed, setApexTarget } = require('./shortsStore');
 const { resolve } = require('./resolve');
 const { generateIndexPage, generateAdminPage } = require('./pages');
 const { createProxy, proxyWeb } = require('./proxy');
@@ -84,6 +84,13 @@ function createApp() {
   app.post('/admin/api/apps', onApex, ensureAuthenticated, (req, res) => {
     const result = upsertApp(store, req.body || {});
     if (result.error) return res.status(400).json({ error: result.error });
+    store = result.store;
+    res.json({ message: 'Gespeichert', ...store });
+  });
+
+  app.post('/admin/api/apps/:slug/listed', onApex, ensureAuthenticated, (req, res) => {
+    const result = setListed(store, String(req.params.slug || '').toLowerCase(), req.body && req.body.listed);
+    if (result.error) return res.status(404).json({ error: result.error });
     store = result.store;
     res.json({ message: 'Gespeichert', ...store });
   });

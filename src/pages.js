@@ -11,45 +11,25 @@ const THEME_BOOT = `
 })();
 `;
 
-const TOOL_META = {
-  flow: {
-    title: 'FLOW',
-    blurb: 'Wettkampfplanung, Check-in und öffentliche Eventseiten.',
-    icon: 'bi-calendar3',
-  },
-  dev: {
-    title: 'FLOW Dev',
-    blurb: 'Entwicklungsumgebung für FLOW.',
-    icon: 'bi-code-slash',
-  },
-  test: {
-    title: 'FLOW Test',
-    blurb: 'Testinstanz von FLOW.',
-    icon: 'bi-flask',
-  },
-  rg: {
-    title: 'Robot Game',
-    blurb: 'Timer an den Robot-Game-Tischen.',
-    icon: 'bi-stopwatch',
-  },
-  jury: {
-    title: 'Jury',
-    blurb: 'Timer für die Jury-Bewertung.',
-    icon: 'bi-clipboard-check',
-  },
-  pfand: {
-    title: 'Pfand',
-    blurb: 'Pfand-Ausgabe und -Rückgabe am Event.',
-    icon: 'bi-coin',
-  },
+const TOOL_ICONS = {
+  flow: 'bi-calendar3',
+  dev: 'bi-code-slash',
+  test: 'bi-flask',
+  rg: 'bi-stopwatch',
+  jury: 'bi-clipboard-check',
+  pfand: 'bi-coin',
 };
 
-function toolMeta(app) {
-  return TOOL_META[app.slug] || {
-    title: app.slug,
-    blurb: app.mode === 'redirect' ? 'Weiterleitung zur Zielseite.' : 'Die Subdomain bleibt in der Adresszeile.',
-    icon: 'bi-box-arrow-up-right',
-  };
+function toolIcon(slug) {
+  return TOOL_ICONS[slug] || 'bi-box-arrow-up-right';
+}
+
+function toolTitle(app) {
+  return app.title || app.slug;
+}
+
+function toolSubtitle(app) {
+  return app.subtitle || '';
 }
 
 function flash(text, kind) {
@@ -184,23 +164,24 @@ function shellLayout({ title, active, user, notices = '', main, script = '' }) {
 }
 
 function generateIndexPage(store, baseDomain, notFoundSlug = null, query = {}, user = null) {
-  const apps = store.apps || [];
+  const apps = (store.apps || []).filter((app) => app.listed !== false);
   const notices = [
     notFoundSlug ? flash(`Unbekannt: ${notFoundSlug}`, 'err') : '',
     flash(indexErrorMessage(query.error), 'err'),
   ].join('');
 
   const tools = apps.map((app) => {
-    const meta = toolMeta(app);
+    const title = toolTitle(app);
+    const subtitle = toolSubtitle(app);
     const host = `${app.slug}.${baseDomain}`;
     return `
       <li>
         <a class="tool-card liquid-surface-inner" href="https://${escapeHtml(host)}">
-          <span class="tool-card__icon" aria-hidden="true"><i class="bi ${meta.icon}"></i></span>
+          <span class="tool-card__icon" aria-hidden="true"><i class="bi ${toolIcon(app.slug)}"></i></span>
           <span>
-            <span class="tool-card__title">${escapeHtml(meta.title)}</span>
+            <span class="tool-card__title">${escapeHtml(title)}</span>
             <span class="tool-card__host">${escapeHtml(host)}</span>
-            <span class="tool-card__blurb">${escapeHtml(meta.blurb)}</span>
+            ${subtitle ? `<span class="tool-card__blurb">${escapeHtml(subtitle)}</span>` : ''}
           </span>
         </a>
       </li>`;
@@ -213,13 +194,10 @@ function generateIndexPage(store, baseDomain, notFoundSlug = null, query = {}, u
     notices,
     main: `
       <section class="welcome-hero liquid-surface liquid-surface--accent">
-        <p class="welcome-kicker">Gateway</p>
         <h1>handson.tools</h1>
-        <p class="welcome-lead">Öffentliche Eventseiten und die Wettkampf-Apps unter einem Dach.</p>
-        <p class="hot-note">Die Eventseite liegt unter <code>${escapeHtml(baseDomain)}/&lt;event&gt;</code> — die Adresse bleibt, dahinter antwortet FLOW. Die Tools darunter haben eigene Hosts.</p>
+        <p class="welcome-lead">Die Apps von HANDS on TECHNOLOGY.</p>
       </section>
-      <section class="section liquid-surface">
-        <h2>Tools</h2>
+      <section class="section">
         ${apps.length
           ? `<ul class="tool-list">${tools}</ul>`
           : '<p class="muted">Noch keine Apps.</p>'}
@@ -233,11 +211,30 @@ function generateAdminPage(store, baseDomain, user, query = {}) {
     <li class="app-row liquid-surface-inner">
       <div class="app-row__top">
         <div>
+          <div class="app-title">${escapeHtml(toolTitle(app))}</div>
           <div class="app-host">${escapeHtml(app.slug)}.${escapeHtml(baseDomain)}</div>
+          ${toolSubtitle(app) ? `<div class="app-subtitle">${escapeHtml(toolSubtitle(app))}</div>` : ''}
           <div class="app-target">→ ${escapeHtml(app.target)}</div>
         </div>
         <div class="app-row__actions">
           <span class="mode">${escapeHtml(app.mode)}</span>
+          <button
+            class="glass-btn-secondary glass-btn--sm listed-toggle${app.listed ? ' is-active' : ''}"
+            type="button"
+            data-listed="${escapeHtml(app.slug)}"
+            aria-pressed="${app.listed ? 'true' : 'false'}"
+          >Übersicht</button>
+          <button
+            class="glass-btn-secondary glass-btn--sm"
+            type="button"
+            data-edit
+            data-slug="${escapeHtml(app.slug)}"
+            data-title="${escapeHtml(toolTitle(app))}"
+            data-subtitle="${escapeHtml(toolSubtitle(app))}"
+            data-target="${escapeHtml(app.target)}"
+            data-mode="${escapeHtml(app.mode)}"
+            data-listed-on="${app.listed ? '1' : '0'}"
+          >Bearbeiten</button>
           <button class="glass-btn-danger glass-btn--sm" type="button" data-delete="${escapeHtml(app.slug)}">Löschen</button>
         </div>
       </div>
@@ -250,12 +247,25 @@ function generateAdminPage(store, baseDomain, user, query = {}) {
       el.textContent = text;
     }
 
+    const listedEl = document.getElementById('listed');
+    const slugEl = document.getElementById('slug');
+    let listedTouched = false;
+    listedEl.addEventListener('change', () => { listedTouched = true; });
+    slugEl.addEventListener('input', () => {
+      if (listedTouched) return;
+      const slug = slugEl.value.trim().toLowerCase();
+      listedEl.checked = !/(^|-)(dev|test)(-|$)/.test(slug);
+    });
+
     document.getElementById('addForm').addEventListener('submit', async (e) => {
       e.preventDefault();
       const body = {
         slug: document.getElementById('slug').value.trim(),
+        title: document.getElementById('title').value.trim(),
+        subtitle: document.getElementById('subtitle').value.trim(),
         target: document.getElementById('target').value.trim(),
         mode: document.getElementById('mode').value,
+        listed: document.getElementById('listed').checked,
       };
       const res = await fetch('/admin/api/apps', {
         method: 'POST',
@@ -277,6 +287,35 @@ function generateAdminPage(store, baseDomain, user, query = {}) {
       const data = await res.json();
       if (res.ok) { showMessage(data.message || 'Gespeichert', 'success'); setTimeout(() => location.reload(), 600); }
       else showMessage(data.error || 'Fehler', 'error');
+    });
+
+    document.querySelectorAll('[data-listed]').forEach((btn) => {
+      btn.addEventListener('click', async () => {
+        const slug = btn.getAttribute('data-listed');
+        const listed = btn.getAttribute('aria-pressed') !== 'true';
+        const res = await fetch('/admin/api/apps/' + encodeURIComponent(slug) + '/listed', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ listed }),
+        });
+        const data = await res.json();
+        if (res.ok) location.reload();
+        else showMessage(data.error || 'Fehler', 'error');
+      });
+    });
+
+    document.querySelectorAll('[data-edit]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        listedTouched = true;
+        slugEl.value = btn.getAttribute('data-slug') || '';
+        document.getElementById('title').value = btn.getAttribute('data-title') || '';
+        document.getElementById('subtitle').value = btn.getAttribute('data-subtitle') || '';
+        document.getElementById('target').value = btn.getAttribute('data-target') || '';
+        document.getElementById('mode').value = btn.getAttribute('data-mode') || 'proxy';
+        listedEl.checked = btn.getAttribute('data-listed-on') === '1';
+        document.getElementById('addForm').scrollIntoView({ behavior: 'smooth', block: 'start' });
+        document.getElementById('title').focus();
+      });
     });
 
     document.querySelectorAll('[data-delete]').forEach((btn) => {
@@ -304,7 +343,7 @@ function generateAdminPage(store, baseDomain, user, query = {}) {
         <p class="welcome-lead">Subdomains, Ziele und den FLOW-One-Link für ${escapeHtml(baseDomain)}.</p>
       </section>
       <div id="message" class="flash liquid-surface-inner"></div>
-      <section class="section liquid-surface">
+      <section class="section">
         <h2>Apex / One-Link</h2>
         <p class="muted" style="margin-bottom:0.85rem">${escapeHtml(baseDomain)}/norderstedt → dieser Host (Proxy, URL bleibt).</p>
         <form id="apexForm">
@@ -317,12 +356,20 @@ function generateAdminPage(store, baseDomain, user, query = {}) {
           </div>
         </form>
       </section>
-      <section class="section liquid-surface">
-        <h2>App hinzufügen</h2>
+      <section class="section">
+        <h2>App</h2>
         <form id="addForm">
           <label class="glass-field">
             <span class="glass-field__label">Slug (wird zu slug.${escapeHtml(baseDomain)})</span>
             <input class="glass-input liquid-surface-control" id="slug" name="slug" placeholder="rg" required>
+          </label>
+          <label class="glass-field">
+            <span class="glass-field__label">Bezeichnung</span>
+            <input class="glass-input liquid-surface-control" id="title" name="title" placeholder="Robot Game" required>
+          </label>
+          <label class="glass-field">
+            <span class="glass-field__label">Untertitel</span>
+            <input class="glass-input liquid-surface-control" id="subtitle" name="subtitle" placeholder="Timer an den Robot-Game-Tischen.">
           </label>
           <label class="glass-field">
             <span class="glass-field__label">Ziel</span>
@@ -335,16 +382,21 @@ function generateAdminPage(store, baseDomain, user, query = {}) {
               <option value="redirect">Redirect — weiter zum Ziel-Host</option>
             </select>
           </label>
+          <label class="listed-check">
+            <input type="checkbox" id="listed" name="listed" checked>
+            <span>In der Übersicht zeigen</span>
+          </label>
+          <p class="muted listed-hint">Ohne Haken bleibt der Host erreichbar, erscheint aber nicht auf der Startseite.</p>
           <div class="form-actions">
             <button class="glass-btn-accent" type="submit">Speichern</button>
           </div>
         </form>
       </section>
-      <section class="section liquid-surface">
+      <section class="section">
         <h2>Apps</h2>
         ${apps.length ? `<ul class="list">${rows}</ul>` : '<p class="muted">Noch keine Apps.</p>'}
       </section>`,
   });
 }
 
-module.exports = { generateIndexPage, generateAdminPage, TOOL_META };
+module.exports = { generateIndexPage, generateAdminPage };

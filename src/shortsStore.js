@@ -8,13 +8,24 @@ const LEGACY_FILE = path.join(__dirname, '..', 'urls.json');
 
 const DEFAULT_APEX = 'https://flow.hands-on-technology.org';
 
+const HIDDEN_BY_DEFAULT = new Set(['dev', 'test', 'test-flow']);
+
+const DEFAULT_COPY = {
+  flow: { title: 'FLOW', subtitle: 'Planung, Check-in und Eventseiten.' },
+  dev: { title: 'FLOW Dev', subtitle: 'Entwicklungsumgebung für FLOW.' },
+  test: { title: 'FLOW Test', subtitle: 'Testinstanz von FLOW.' },
+  rg: { title: 'Robot Game', subtitle: 'Timer an den Robot-Game-Tischen.' },
+  jury: { title: 'Jury', subtitle: 'Timer für die Jury-Bewertung.' },
+  pfand: { title: 'Pfand', subtitle: 'Pfand-Ausgabe und -Rückgabe am Event.' },
+};
+
 const DEFAULT_APPS = [
-  { slug: 'flow', target: 'https://flow.hands-on-technology.org', mode: 'proxy' },
-  { slug: 'dev', target: 'https://dev.flow.hands-on-technology.org', mode: 'proxy' },
-  { slug: 'test', target: 'https://test.flow.hands-on-technology.org', mode: 'proxy' },
-  { slug: 'rg', target: 'https://timer.hands-on-technology.org', mode: 'proxy' },
-  { slug: 'jury', target: 'https://jurytimer.hands-on-technology.org', mode: 'proxy' },
-  { slug: 'pfand', target: 'https://pfand.hands-on-technology.org', mode: 'proxy' },
+  { slug: 'flow', target: 'https://flow.hands-on-technology.org', mode: 'proxy', listed: true, ...DEFAULT_COPY.flow },
+  { slug: 'dev', target: 'https://dev.flow.hands-on-technology.org', mode: 'proxy', listed: false, ...DEFAULT_COPY.dev },
+  { slug: 'test', target: 'https://test.flow.hands-on-technology.org', mode: 'proxy', listed: false, ...DEFAULT_COPY.test },
+  { slug: 'rg', target: 'https://timer.hands-on-technology.org', mode: 'proxy', listed: true, ...DEFAULT_COPY.rg },
+  { slug: 'jury', target: 'https://jurytimer.hands-on-technology.org', mode: 'proxy', listed: true, ...DEFAULT_COPY.jury },
+  { slug: 'pfand', target: 'https://pfand.hands-on-technology.org', mode: 'proxy', listed: true, ...DEFAULT_COPY.pfand },
 ];
 
 function emptyStore() {
@@ -25,11 +36,39 @@ function emptyStore() {
   };
 }
 
+function defaultListed(slug) {
+  const key = String(slug || '').toLowerCase();
+  if (HIDDEN_BY_DEFAULT.has(key)) return false;
+  if (/(^|-)(dev|test)(-|$)/.test(key)) return false;
+  return true;
+}
+
+function parseListed(value, slug) {
+  if (value === false || value === 0 || value === '0' || value === 'false') return false;
+  if (value === true || value === 1 || value === '1' || value === 'true') return true;
+  return defaultListed(slug);
+}
+
+function cleanText(value) {
+  return String(value || '').replace(/\s+/g, ' ').trim();
+}
+
+function defaultTitle(slug) {
+  return (DEFAULT_COPY[slug] && DEFAULT_COPY[slug].title) || slug;
+}
+
+function defaultSubtitle(slug) {
+  return (DEFAULT_COPY[slug] && DEFAULT_COPY[slug].subtitle) || '';
+}
+
 function normalizeApp(app) {
   const slug = String(app.slug || '').trim().toLowerCase();
   const target = withProtocol(app.target);
   const mode = app.mode === 'redirect' ? 'redirect' : 'proxy';
-  return { slug, target, mode };
+  const listed = parseListed(app.listed, slug);
+  const title = cleanText(app.title) || defaultTitle(slug);
+  const subtitle = app.subtitle == null ? defaultSubtitle(slug) : cleanText(app.subtitle);
+  return { slug, title, subtitle, target, mode, listed };
 }
 
 function normalizeStore(raw) {
@@ -91,7 +130,14 @@ function saveStore(store) {
 }
 
 function upsertApp(store, input) {
-  const app = normalizeApp(input);
+  const slug = String(input.slug || '').trim().toLowerCase();
+  const existing = (store.apps || []).find((row) => row.slug === slug);
+  const app = normalizeApp({
+    ...input,
+    listed: input.listed === undefined && existing ? existing.listed : input.listed,
+    title: input.title === undefined && existing ? existing.title : input.title,
+    subtitle: input.subtitle === undefined && existing ? existing.subtitle : input.subtitle,
+  });
   if (!isValidSlug(app.slug)) {
     return { error: 'Slug is reserved or invalid' };
   }
@@ -102,6 +148,13 @@ function upsertApp(store, input) {
   apps.push(app);
   apps.sort((a, b) => a.slug.localeCompare(b.slug));
   return { store: saveStore({ ...store, apps }) };
+}
+
+function setListed(store, slug, listed) {
+  const key = String(slug || '').toLowerCase();
+  const app = (store.apps || []).find((row) => row.slug === key);
+  if (!app) return { error: 'Not found' };
+  return upsertApp(store, { ...app, listed: parseListed(listed, key) });
 }
 
 function deleteApp(store, slug) {
@@ -121,7 +174,10 @@ module.exports = {
   saveStore,
   upsertApp,
   deleteApp,
+  setListed,
   setApexTarget,
+  parseListed,
+  normalizeApp,
   SHORTS_FILE,
   DEFAULT_APEX,
 };

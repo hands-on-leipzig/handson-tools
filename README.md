@@ -36,9 +36,11 @@ Do **not** replace Traefik’s existing resolver `le` (HTTP-01, OpenProject). Ad
 Each short is:
 
 - **Slug** → `{slug}.handson.tools`
+- **Bezeichnung / Untertitel** — title and subtitle on the public start page
 - **Target** → origin to proxy or redirect to
 - **Proxy** — subdomain stays in the address bar
 - **Redirect** — browser is sent to the target host
+- **Übersicht** — whether the slug appears on the public start page (`dev` / `test` / `test-flow` default off; the host still routes)
 
 The apex FLOW target is a separate field (one-link catch-all). Event slugs are not entered here; FLOW owns them.
 

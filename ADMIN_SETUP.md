@@ -20,6 +20,6 @@ Optional `KEYCLOAK_ADMIN_ROLE` (default `handson-tools-admin`).
 ## What you can edit
 
 - **Apex / One-Link** — FLOW origin for `handson.tools/<event>`
-- **Apps** — slug, target, proxy vs redirect
+- **Apps** — slug, Bezeichnung, Untertitel, target, proxy vs redirect, and whether the slug appears on the public overview (test/dev hosts stay reachable either way)
 
 Event slugs are not managed here.

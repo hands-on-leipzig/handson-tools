@@ -2,11 +2,53 @@
   "version": 1,
   "apexTarget": "https://flow.hands-on-technology.org",
   "apps": [
-    { "slug": "flow", "target": "https://flow.hands-on-technology.org", "mode": "proxy" },
-    { "slug": "dev", "target": "https://dev.flow.hands-on-technology.org", "mode": "proxy" },
-    { "slug": "test", "target": "https://test.flow.hands-on-technology.org", "mode": "proxy" },
-    { "slug": "rg", "target": "https://timer.hands-on-technology.org", "mode": "proxy" },
-    { "slug": "jury", "target": "https://jurytimer.hands-on-technology.org", "mode": "proxy" },
-    { "slug": "pfand", "target": "https://pfand.hands-on-technology.org", "mode": "proxy" }
+    {
+      "slug": "dev",
+      "title": "FLOW Dev",
+      "subtitle": "Entwicklungsumgebung für FLOW.",
+      "target": "https://dev.flow.hands-on-technology.org",
+      "mode": "proxy",
+      "listed": false
+    },
+    {
+      "slug": "flow",
+      "title": "FLOW",
+      "subtitle": "FLexibles OrganisationsWerkzeug",
+      "target": "https://flow.hands-on-technology.org",
+      "mode": "proxy",
+      "listed": true
+    },
+    {
+      "slug": "jury",
+      "title": "Jury",
+      "subtitle": "Timer für die Jury-Bewertung.",
+      "target": "https://jurytimer.hands-on-technology.org",
+      "mode": "proxy",
+      "listed": true
+    },
+    {
+      "slug": "pfand",
+      "title": "Pfand",
+      "subtitle": "Pfand-Ausgabe und -Rückgabe am Event.",
+      "target": "https://pfand.hands-on-technology.org",
+      "mode": "proxy",
+      "listed": true
+    },
+    {
+      "slug": "rg",
+      "title": "Robot Game",
+      "subtitle": "Timer an den Robot-Game-Tischen.",
+      "target": "https://timer.hands-on-technology.org",
+      "mode": "proxy",
+      "listed": true
+    },
+    {
+      "slug": "test",
+      "title": "FLOW Test",
+      "subtitle": "Testinstanz von FLOW.",
+      "target": "https://test.flow.hands-on-technology.org",
+      "mode": "proxy",
+      "listed": false
+    }
   ]
 }

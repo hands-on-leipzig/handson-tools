@@ -9,8 +9,16 @@
 }
 
 .hot-page {
-  max-width: 48rem;
+  /* Center the column in the already-glass panel; nested liquid-surface
+     drop shadows were stacking in the gaps between cards. */
+  align-self: center;
+  width: 100%;
+  max-width: 42rem;
   color: var(--color-text);
+}
+
+.hot-page .liquid-surface {
+  box-shadow: var(--liquid-shadow-inset);
 }
 
 .hot-page h1,
@@ -27,13 +35,13 @@
 }
 
 .hot-page h2 {
-  margin: 0 0 0.65rem;
+  margin: 0 0 0.75rem;
   font-size: var(--text-lg);
 }
 
 .welcome-hero {
   padding: 1.5rem 1.35rem 1.4rem;
-  margin-bottom: 1.1rem;
+  margin-bottom: 1.5rem;
 }
 
 .welcome-kicker {
@@ -52,21 +60,13 @@
   line-height: 1.55;
 }
 
-.welcome-lead code,
-.hot-note code {
-  font-size: 0.92em;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-}
-
-.hot-note {
-  margin: 0.85rem 0 0;
-  color: var(--color-text-muted);
-  line-height: 1.5;
-}
-
 .section {
-  padding: 1.15rem 1.2rem 1.2rem;
-  margin-bottom: 0.85rem;
+  padding: 0;
+  margin-bottom: 1.5rem;
+}
+
+.section:last-child {
+  margin-bottom: 0;
 }
 
 .tool-list,
@@ -75,7 +75,7 @@
   margin: 0;
   padding: 0;
   display: grid;
-  gap: 0.65rem;
+  gap: 0.75rem;
 }
 
 .tool-card {
@@ -138,9 +138,21 @@
 }
 
 .app-host {
+  font-weight: 600;
+  color: var(--color-accent);
+  word-break: break-word;
+}
+
+.app-title {
   font-weight: 700;
   color: var(--color-text);
-  word-break: break-word;
+}
+
+.app-subtitle {
+  margin-top: 0.2rem;
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+  line-height: 1.4;
 }
 
 .app-target {
@@ -171,6 +183,33 @@
   align-items: center;
   justify-content: flex-end;
   gap: 0.45rem;
+}
+
+.listed-toggle.is-active {
+  color: var(--color-on-accent);
+  border-color: color-mix(in srgb, #fff 28%, var(--color-accent));
+  background: var(--color-accent);
+}
+
+.listed-check {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  margin: 0.15rem 0 0.35rem;
+  font-weight: 600;
+  color: var(--color-text);
+  cursor: pointer;
+}
+
+.listed-check input {
+  width: 1.1rem;
+  height: 1.1rem;
+  accent-color: var(--color-accent);
+}
+
+.listed-hint {
+  margin: 0 0 0.65rem;
+  font-size: var(--text-sm);
 }
 
 .muted {
