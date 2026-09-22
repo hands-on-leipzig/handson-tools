@@ -3,9 +3,9 @@ services:
     build: .
     restart: unless-stopped
     network_mode: host
-    env_file: .env
     environment:
       NODE_ENV: production
+      BASE_DOMAIN: handson.tools
       HOP_LISTEN_HOST: "0.0.0.0"
       HOP_LISTEN_PORT: "4180"
     command: ["node", "src/egressHop.js"]

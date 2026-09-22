@@ -1,5 +1,7 @@
 const http = require('http');
 const https = require('https');
+const net = require('net');
+const tls = require('tls');
 const httpProxy = require('http-proxy');
 
 const hopHost = String(process.env.FLOW_HOP_HOST || '').trim();
@@ -10,25 +12,32 @@ function isFlowHostname(hostname) {
     || hostname.endsWith('.flow.hands-on-technology.org');
 }
 
-function createHopAgent(BaseAgent) {
-  const agent = new BaseAgent({ keepAlive: true });
-  const connect = BaseAgent.prototype.createConnection;
+function createHopHttpsAgent() {
+  const agent = new https.Agent({ keepAlive: false, maxSockets: 64 });
   agent.createConnection = function hopConnection(options, callback) {
-    if (!options.servername) {
-      options.servername = options.hostname || options.host;
-    }
-    options.host = hopHost;
-    options.hostname = hopHost;
-    options.port = hopPort;
-    return connect.call(this, options, callback);
+    const servername = options.servername || options.hostname || options.host;
+    const raw = net.connect({ host: hopHost, port: hopPort, family: 4 });
+    return tls.connect({
+      socket: raw,
+      servername,
+      rejectUnauthorized: options.rejectUnauthorized !== false,
+    }, callback);
+  };
+  return agent;
+}
+
+function createHopHttpAgent() {
+  const agent = new http.Agent({ keepAlive: false, maxSockets: 64 });
+  agent.createConnection = function hopConnection(options, callback) {
+    return net.connect({ host: hopHost, port: hopPort, family: 4 }, callback);
   };
   return agent;
 }
 
 const ipv6HttpsAgent = new https.Agent({ family: 6, keepAlive: true });
 const ipv6HttpAgent = new http.Agent({ family: 6, keepAlive: true });
-const hopHttpsAgent = hopHost ? createHopAgent(https.Agent) : null;
-const hopHttpAgent = hopHost ? createHopAgent(http.Agent) : null;
+const hopHttpsAgent = hopHost ? createHopHttpsAgent() : null;
+const hopHttpAgent = hopHost ? createHopHttpAgent() : null;
 
 function agentFor(target) {
   let url;

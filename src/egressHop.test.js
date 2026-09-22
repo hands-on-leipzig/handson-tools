@@ -54,6 +54,7 @@ describe('isLoopHost', () => {
     assert.equal(isLoopHost('handson.tools'), true);
     assert.equal(isLoopHost('flow.handson.tools'), true);
     assert.equal(isLoopHost('timer.hands-on-technology.org'), false);
+    assert.equal(isLoopHost('flow.hands-on-technology.org'), false);
   });
 });
 

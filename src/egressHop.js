@@ -1,12 +1,15 @@
 'use strict';
 
+const dns = require('dns');
 const net = require('net');
+
+dns.setDefaultResultOrder('ipv6first');
 
 const LISTEN_HOST = process.env.HOP_LISTEN_HOST || '0.0.0.0';
 const LISTEN_PORT = Number(process.env.HOP_LISTEN_PORT || process.env.FLOW_HOP_PORT || 4180);
 const DEST_PORT = Number(process.env.HOP_DEST_PORT || 443);
-const LOOP_SUFFIX = `.${String(process.env.BASE_DOMAIN || 'handson.tools').toLowerCase()}`;
 const LOOP_APEX = String(process.env.BASE_DOMAIN || 'handson.tools').toLowerCase();
+const LOOP_SUFFIX = `.${LOOP_APEX}`;
 
 function isLoopHost(hostname) {
   const host = String(hostname || '').toLowerCase().replace(/\.$/, '');
@@ -59,28 +62,22 @@ function parseSni(buf) {
 }
 
 function defaultConnect(sni, callback) {
-  return net.connect(
+  const socket = net.connect(
     {
       host: sni,
       port: DEST_PORT,
       autoSelectFamily: true,
-      autoSelectFamilyAttemptTimeout: 400,
+      autoSelectFamilyAttemptTimeout: 300,
     },
-    callback,
+    () => {
+      console.log(`hop ${sni} → ${socket.remoteAddress}`);
+      callback();
+    },
   );
-}
-
-function pipe(a, b) {
-  a.pipe(b);
-  b.pipe(a);
-  const close = () => {
-    a.destroy();
-    b.destroy();
-  };
-  a.on('error', close);
-  b.on('error', close);
-  a.on('close', () => b.destroy());
-  b.on('close', () => a.destroy());
+  socket.on('error', (err) => {
+    console.error(`hop ${sni} ${err.code || err.message}`);
+  });
+  return socket;
 }
 
 function createHopServer({ connect = defaultConnect } = {}) {
@@ -93,26 +90,19 @@ function createHopServer({ connect = defaultConnect } = {}) {
         if (buf.length > 16 * 1024) client.destroy();
         return;
       }
+      client.pause();
       client.removeListener('data', onData);
       if (!sni || isLoopHost(sni)) {
+        console.error(`hop reject ${sni || 'no-sni'}`);
         client.destroy();
         return;
       }
-      let dest;
-      try {
-        dest = connect(sni, () => {
-          dest.write(buf);
-          pipe(client, dest);
-        });
-      } catch {
-        client.destroy();
-        return;
-      }
-      dest.setTimeout(15000, () => {
-        dest.destroy();
-        client.destroy();
+      const dest = connect(sni, () => {
+        dest.write(buf);
+        client.pipe(dest);
+        dest.pipe(client);
+        client.resume();
       });
-      dest.on('connect', () => dest.setTimeout(0));
       dest.on('error', () => client.destroy());
     };
     client.on('data', onData);
@@ -121,8 +111,12 @@ function createHopServer({ connect = defaultConnect } = {}) {
 }
 
 function listen(server = createHopServer()) {
+  server.on('error', (err) => {
+    console.error(`egress hop listen failed: ${err.code || err.message}`);
+    process.exit(1);
+  });
   server.listen(LISTEN_PORT, LISTEN_HOST, () => {
-    console.log(`egress hop on ${LISTEN_HOST}:${LISTEN_PORT} → *:${DEST_PORT}`);
+    console.log(`egress hop on ${LISTEN_HOST}:${LISTEN_PORT} → *:${DEST_PORT} (ipv6first)`);
   });
   return server;
 }
