@@ -11,6 +11,10 @@ const { probe, hopFromEnv } = require('./egress');
 
 const STATIC_FILES = ['favicon.ico', 'hot.png'];
 
+/** Neutral hosts for /admin/api/egress — unrelated to any app. */
+const REFERENCE_TARGETS = (process.env.EGRESS_REFERENCE
+  || 'https://one.one.one.one,https://www.google.com').split(',').map((entry) => entry.trim()).filter(Boolean);
+
 function glassRoot() {
   const candidates = [
     process.env.GLASS_ROOT,
@@ -111,13 +115,17 @@ function createApp() {
   });
 
   // Which egress route reaches which upstream — the answer to "es lädt ewig
-  // und dann kommt 502" without shell access to the host.
+  // und dann kommt 502" without shell access to the host. The reference hosts
+  // separate "this box has no egress" from "that upstream refuses us".
   app.get('/admin/api/egress', onApex, ensureAuthenticated, async (req, res) => {
     const targets = [store.apexTarget, ...store.apps.map((row) => row.target)]
       .map(originOf)
       .filter(Boolean);
-    const results = await Promise.all([...new Set(targets)].map((target) => probe(target)));
-    res.json({ hop: hopFromEnv(), targets: results });
+    const [reference, results] = await Promise.all([
+      Promise.all(REFERENCE_TARGETS.map((target) => probe(target))),
+      Promise.all([...new Set(targets)].map((target) => probe(target))),
+    ]);
+    res.json({ hop: hopFromEnv(), reference, targets: results });
   });
 
   // Backward-compatible admin API used by the previous UI.
