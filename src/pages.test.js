@@ -28,6 +28,8 @@ describe('pages', () => {
   it('renders the index in the Glass app shell', () => {
     const html = generateIndexPage(store, 'handson.tools');
     assert.match(html, /glass-app liquid-surface-scope/);
+    assert.doesNotMatch(html, /glass-app--drawer-open/);
+    assert.match(html, /glass-app__backdrop/);
     assert.match(html, /glass-sidebar/);
     assert.match(html, /bi-gear-fill/);
     assert.match(html, /Apps verwalten/);

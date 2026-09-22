@@ -1,7 +1,17 @@
 /* Gateway screens on top of the Glass app shell */
 
+/*
+ * AppShell.vue only mounts .glass-app__backdrop while the drawer is open.
+ * Glass mobile CSS then does `display: block` on that class. This page keeps
+ * the node in the DOM, so without an override the scrim covers the screen.
+ */
+.glass-app__backdrop {
+  display: none;
+}
+
 .glass-app--drawer-open .glass-app__backdrop {
   display: block;
+  z-index: 1090;
 }
 
 .hot-brand .glass-sidebar__brand-logo {
