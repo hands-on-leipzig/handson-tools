@@ -4,9 +4,10 @@ const express = require('express');
 const bodyParser = require('body-parser');
 const { configureAuth } = require('./auth');
 const { loadStore, upsertApp, deleteApp, setListed, setApexTarget } = require('./shortsStore');
-const { resolve } = require('./resolve');
+const { resolve, originOf } = require('./resolve');
 const { generateIndexPage, generateAdminPage } = require('./pages');
-const { createProxy, proxyWeb, agentFor } = require('./proxy');
+const { createProxy, proxyWeb, proxyWebSocket } = require('./proxy');
+const { probe, hopFromEnv } = require('./egress');
 
 const STATIC_FILES = ['favicon.ico', 'hot.png'];
 
@@ -109,6 +110,16 @@ function createApp() {
     res.json({ message: 'Gespeichert', ...store });
   });
 
+  // Which egress route reaches which upstream — the answer to "es lädt ewig
+  // und dann kommt 502" without shell access to the host.
+  app.get('/admin/api/egress', onApex, ensureAuthenticated, async (req, res) => {
+    const targets = [store.apexTarget, ...store.apps.map((row) => row.target)]
+      .map(originOf)
+      .filter(Boolean);
+    const results = await Promise.all([...new Set(targets)].map((target) => probe(target)));
+    res.json({ hop: hopFromEnv(), targets: results });
+  });
+
   // Backward-compatible admin API used by the previous UI.
   app.get('/admin/api/urls', onApex, ensureAuthenticated, (req, res) => {
     const urls = {};
@@ -156,8 +167,7 @@ function createApp() {
       socket.destroy();
       return;
     }
-    if (decision.path) req.url = decision.path;
-    proxy.ws(req, socket, head, { target: decision.target, changeOrigin: true, agent: agentFor(decision.target) });
+    proxyWebSocket(proxy, req, socket, head, decision.target, decision.path);
   });
   return app;
 }

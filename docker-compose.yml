@@ -1,11 +1,18 @@
 services:
-  flow-hop:
-    image: alpine/socat
+  # Egress hop: TLS relay on the host network, routed by SNI. It never has a
+  # destination of its own — it dials whatever host the ClientHello names, over
+  # IPv6 or IPv4. The gateway only needs it when the container's own route to an
+  # upstream is broken; it races both paths.
+  egress-hop:
+    build: .
     restart: unless-stopped
     network_mode: host
-    command:
-      - "TCP4-LISTEN:4180,fork,reuseaddr,keepalive"
-      - "TCP6:flow.hands-on-technology.org:443"
+    environment:
+      NODE_ENV: production
+      BASE_DOMAIN: handson.tools
+      HOP_LISTEN_HOST: "0.0.0.0"
+      HOP_LISTEN_PORT: "4180"
+    command: ["node", "src/egressHop.js"]
 
   gateway:
     build: .
@@ -16,14 +23,14 @@ services:
     environment:
       NODE_ENV: production
       PORT: "3000"
-      FLOW_HOP_HOST: host.docker.internal
-      FLOW_HOP_PORT: "4180"
+      EGRESS_HOP_HOST: host.docker.internal
+      EGRESS_HOP_PORT: "4180"
     volumes:
       - ./data:/app/data
     expose:
       - "3000"
     depends_on:
-      - flow-hop
+      - egress-hop
     labels:
       - traefik.enable=true
       - traefik.docker.network=proxy

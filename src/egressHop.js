@@ -6,8 +6,9 @@ const net = require('net');
 dns.setDefaultResultOrder('ipv6first');
 
 const LISTEN_HOST = process.env.HOP_LISTEN_HOST || '0.0.0.0';
-const LISTEN_PORT = Number(process.env.HOP_LISTEN_PORT || process.env.FLOW_HOP_PORT || 4180);
+const LISTEN_PORT = Number(process.env.HOP_LISTEN_PORT || 4180);
 const DEST_PORT = Number(process.env.HOP_DEST_PORT || 443);
+const CONNECT_TIMEOUT_MS = Number(process.env.HOP_CONNECT_TIMEOUT_MS || 8000);
 const LOOP_APEX = String(process.env.BASE_DOMAIN || 'handson.tools').toLowerCase();
 const LOOP_SUFFIX = `.${LOOP_APEX}`;
 
@@ -70,10 +71,17 @@ function defaultConnect(sni, callback) {
       autoSelectFamilyAttemptTimeout: 300,
     },
     () => {
+      socket.setTimeout(0);
       console.log(`hop ${sni} → ${socket.remoteAddress}`);
       callback();
     },
   );
+  // A black-holed route must fail, not hang: no SYN-ACK within the window ends
+  // the attempt and the gateway falls back to its direct connection.
+  socket.setTimeout(CONNECT_TIMEOUT_MS, () => {
+    console.error(`hop ${sni} connect timeout`);
+    socket.destroy();
+  });
   socket.on('error', (err) => {
     console.error(`hop ${sni} ${err.code || err.message}`);
   });
@@ -104,6 +112,8 @@ function createHopServer({ connect = defaultConnect } = {}) {
         client.resume();
       });
       dest.on('error', () => client.destroy());
+      dest.on('close', () => client.destroy());
+      client.on('close', () => dest.destroy());
     };
     client.on('data', onData);
     client.on('error', () => client.destroy());

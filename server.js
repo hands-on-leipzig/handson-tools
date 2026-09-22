@@ -1,8 +1,5 @@
 require('dotenv').config();
 
-const dns = require('dns');
-dns.setDefaultResultOrder('verbatim');
-
 const { createApp } = require('./src/app');
 
 const PORT = process.env.PORT || 3000;

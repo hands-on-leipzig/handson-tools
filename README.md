@@ -51,12 +51,31 @@ Same Docker host, network `proxy`, entrypoint `websecure`, resolver **`le-dns`**
 1. Add `le-dns` to the Traefik compose (`deploy/traefik-le-dns.txt`), restart Traefik.
 2. Point the two DNS records at the Traefik host.
 3. Copy `env.example` → `.env`, set Keycloak + `SESSION_SECRET` (from the current handson.tools server).
-4. `docker compose up -d --build`
-5. Optional: Keycloak client `flow` → `https://flow.handson.tools/*`
+4. `docker compose down --remove-orphans && docker compose up -d --build` — the old `flow-hop` container (socat, wired to one destination) has to release host port 4180 before `egress-hop` can bind it.
+5. Check `https://handson.tools/admin/api/egress`, then open one app subdomain.
+6. Optional: Keycloak client `flow` → `https://flow.handson.tools/*`
 
 `data/shorts.json` is bind-mounted and edited by the admin UI.
 
-The `flow-hop` sidecar is socat on the host: IPv4 `:4180` in, IPv6 to `flow.hands-on-technology.org:443` out. Docker’s bridge has no working IPv6, so HTTPS proxy targets go through that hop.
+## Egress — how the gateway reaches an app
+
+Two routes, tried in parallel for every HTTPS upstream:
+
+1. **direct** from the container (IPv4 or IPv6, Happy Eyeballs)
+2. **hop** — `egress-hop`, a TLS relay on the host network (`src/egressHop.js`). It has no destination of its own: it reads the SNI from the ClientHello and dials that host, so it works for every app, not just FLOW. The host’s routing table includes IPv6, which the container’s bridge does not.
+
+The direct attempt starts first, the hop follows 250 ms later, and the **first finished TLS handshake** wins — the handshake, not the TCP connect, because the hop accepts every connection before it knows where it goes. A dead hop, a black-holed IPv6 route or a container without egress therefore costs a few hundred milliseconds instead of taking every app down. Nothing in the code knows any hostname; whatever the admin UI stores is what gets dialled.
+
+`EGRESS_HOP_HOST` empty → direct only. Do not open 4180 on the Hetzner firewall: the hop relays to any TLS host, it only refuses its own names (loop protection).
+
+`GET /admin/api/egress` (Keycloak login) checks both routes against every configured target and reports them separately:
+
+```json
+{ "target": "https://timer.hands-on-technology.org",
+  "direct": { "ok": true, "ms": 42 }, "hop": { "ok": true, "ms": 48 } }
+```
+
+Upstream redirects and cookies are rewritten onto the vanity host, so `rg.handson.tools` stays in the address bar and sessions keep working. An upstream that cannot be reached answers 502 (504 on timeout) with a German error page instead of hanging.
 
 ## FLOW env
 
@@ -79,8 +98,10 @@ npm test
 COOKIE_SECURE=false NODE_ENV=development BASE_DOMAIN=handson.tools npm start
 ```
 
-With `NODE_ENV=development`, `http://localhost:3000` is treated as the apex so the Glass UI can be previewed without a `Host` header.
+With `NODE_ENV=development`, `http://localhost:3000` is treated as the apex so the Glass UI can be previewed without a `Host` header. Any app subdomain can be tried with a `Host` header instead of `/etc/hosts`:
 
-Subdomains need `/etc/hosts` (or similar) for `flow.handson.tools`, `rg.handson.tools`, … pointing at localhost, plus a reverse proxy that forwards the `Host` header.
+```bash
+curl -H 'Host: rg.handson.tools' http://127.0.0.1:3000/
+```
 
-Until Traefik owns the domain, the existing Apache vhost can keep proxying everything to Node — add `ServerAlias *.handson.tools` so app hosts hit the same process.
+To exercise the hop locally, run `HOP_LISTEN_HOST=127.0.0.1 npm run hop` next to it and start the gateway with `EGRESS_HOP_HOST=127.0.0.1`.

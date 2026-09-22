@@ -4,7 +4,6 @@ const { withProtocol, isValidSlug } = require('./resolve');
 
 const DATA_DIR = path.join(__dirname, '..', 'data');
 const SHORTS_FILE = path.join(DATA_DIR, 'shorts.json');
-const LEGACY_FILE = path.join(__dirname, '..', 'urls.json');
 
 const DEFAULT_APEX = 'https://flow.hands-on-technology.org';
 
@@ -81,25 +80,6 @@ function normalizeStore(raw) {
   return store;
 }
 
-function migrateLegacy(urls) {
-  const store = emptyStore();
-  const apps = [];
-  const seen = new Set();
-  for (const [slug, target] of Object.entries(urls || {})) {
-    const app = normalizeApp({ slug, target, mode: 'proxy' });
-    if (!app.slug || seen.has(app.slug)) continue;
-    seen.add(app.slug);
-    apps.push(app);
-  }
-  // Keep defaults that were not in urls.json so FLOW/dev/test still exist.
-  for (const fallback of DEFAULT_APPS) {
-    if (!seen.has(fallback.slug)) apps.push({ ...fallback });
-  }
-  store.apps = apps;
-  if (urls && urls.flow) store.apexTarget = withProtocol(urls.flow);
-  return store;
-}
-
 function readJson(file) {
   return JSON.parse(fs.readFileSync(file, 'utf8'));
 }
@@ -108,11 +88,6 @@ function loadStore() {
   try {
     if (fs.existsSync(SHORTS_FILE)) {
       return normalizeStore(readJson(SHORTS_FILE));
-    }
-    if (fs.existsSync(LEGACY_FILE)) {
-      const store = migrateLegacy(readJson(LEGACY_FILE));
-      saveStore(store);
-      return store;
     }
   } catch (error) {
     console.error('Failed to read shorts:', error);
