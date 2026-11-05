@@ -3,7 +3,9 @@ const path = require('path');
 const { withProtocol, isValidSlug } = require('./resolve');
 
 const DATA_DIR = path.join(__dirname, '..', 'data');
-const SHORTS_FILE = path.join(DATA_DIR, 'shorts.json');
+const SHORTS_FILE = process.env.SHORTS_FILE
+  ? path.resolve(process.env.SHORTS_FILE)
+  : path.join(DATA_DIR, 'shorts.json');
 
 const DEFAULT_APEX = 'https://flow.hands-on-technology.org';
 

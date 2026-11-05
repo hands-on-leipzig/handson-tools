@@ -37,8 +37,12 @@ function createApp() {
   const glassDir = glassRoot();
 
   app.disable('x-powered-by');
-  app.use(bodyParser.json());
-  app.use(bodyParser.urlencoded({ extended: true }));
+  // Only the admin API reads a body. A global parser consumes the stream, and
+  // the proxy then waits until the upstream times out — every JSON POST 502s.
+  const parseBody = [
+    bodyParser.json(),
+    bodyParser.urlencoded({ extended: true }),
+  ];
 
   function requestHost(req) {
     return (req.headers.host || '').split(':')[0].toLowerCase();
@@ -86,14 +90,14 @@ function createApp() {
     res.json(store);
   });
 
-  app.post('/admin/api/apps', onApex, ensureAuthenticated, (req, res) => {
+  app.post('/admin/api/apps', onApex, ...parseBody, ensureAuthenticated, (req, res) => {
     const result = upsertApp(store, req.body || {});
     if (result.error) return res.status(400).json({ error: result.error });
     store = result.store;
     res.json({ message: 'Gespeichert', ...store });
   });
 
-  app.post('/admin/api/apps/:slug/listed', onApex, ensureAuthenticated, (req, res) => {
+  app.post('/admin/api/apps/:slug/listed', onApex, ...parseBody, ensureAuthenticated, (req, res) => {
     const result = setListed(store, String(req.params.slug || '').toLowerCase(), req.body && req.body.listed);
     if (result.error) return res.status(404).json({ error: result.error });
     store = result.store;
@@ -107,7 +111,7 @@ function createApp() {
     res.json({ message: 'Gelöscht', ...store });
   });
 
-  app.post('/admin/api/apex', onApex, ensureAuthenticated, (req, res) => {
+  app.post('/admin/api/apex', onApex, ...parseBody, ensureAuthenticated, (req, res) => {
     const result = setApexTarget(store, req.body && req.body.target);
     if (result.error) return res.status(400).json({ error: result.error });
     store = result.store;
