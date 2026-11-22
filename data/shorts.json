@@ -43,6 +43,14 @@
       "listed": true
     },
     {
+      "slug": "score",
+      "title": "SCORE",
+      "subtitle": "Auswertung für Robot Game und Jury.",
+      "target": "https://score.hands-on-technology.org",
+      "mode": "proxy",
+      "listed": true
+    },
+    {
       "slug": "test",
       "title": "FLOW Test",
       "subtitle": "Testinstanz von FLOW.",
