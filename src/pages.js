@@ -59,7 +59,12 @@ function navItem(href, icon, label, active) {
     </a>`;
 }
 
-function shellLayout({ title, active, user, notices = '', main, script = '' }) {
+function jsonScript(id, value) {
+  const json = JSON.stringify(value).replace(/</g, '\\u003c');
+  return `<script type="application/json" id="${id}">${json}</script>`;
+}
+
+function shellLayout({ title, active, user, notices = '', main, script = '', hub = '', baseDomain = '' }) {
   const userLabel = user && (user.name || user.email) ? (user.name || user.email) : '';
   const identity = userLabel
     ? `
@@ -84,12 +89,18 @@ function shellLayout({ title, active, user, notices = '', main, script = '' }) {
     : '';
 
   return `<!DOCTYPE html>
-<html lang="de">
+<html lang="de"${baseDomain ? ` data-base-domain="${escapeHtml(baseDomain)}"` : ''}>
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>${escapeHtml(title)}</title>
   <link rel="icon" href="/favicon.ico">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <meta name="theme-color" content="#ff7a00">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="HANDS on">
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png">
   <script>${THEME_BOOT}</script>
   <link rel="stylesheet" href="/icons/bootstrap-icons.css">
   <link rel="stylesheet" href="/glass/styles/index.css">
@@ -156,7 +167,9 @@ function shellLayout({ title, active, user, notices = '', main, script = '' }) {
         </div>
       </div>
     </main>
+    ${hub}
   </div>
+  <script src="/shell-protocol.js"></script>
   <script src="/shell.js"></script>
   ${script ? `<script>${script}</script>` : ''}
 </body>
@@ -176,7 +189,7 @@ function generateIndexPage(store, baseDomain, notFoundSlug = null, query = {}, u
     const host = `${app.slug}.${baseDomain}`;
     return `
       <li>
-        <a class="tool-card liquid-surface-inner" href="https://${escapeHtml(host)}">
+        <a class="tool-card liquid-surface-inner" data-app-slug="${escapeHtml(app.slug)}" data-app-title="${escapeHtml(title)}" href="https://${escapeHtml(host)}/">
           <span class="tool-card__icon" aria-hidden="true"><i class="bi ${toolIcon(app.slug)}"></i></span>
           <span>
             <span class="tool-card__title">${escapeHtml(title)}</span>
@@ -187,21 +200,45 @@ function generateIndexPage(store, baseDomain, notFoundSlug = null, query = {}, u
       </li>`;
   }).join('');
 
+  const hubApps = apps.map((app) => ({
+    slug: app.slug,
+    title: toolTitle(app),
+    target: app.target,
+  }));
+
   return shellLayout({
     title: 'handson.tools',
     active: 'home',
     user,
+    baseDomain,
     notices,
     main: `
-      <section class="welcome-hero liquid-surface liquid-surface--accent">
-        <h1>handson.tools</h1>
-        <p class="welcome-lead">Die Apps von HANDS on TECHNOLOGY.</p>
-      </section>
-      <section class="section">
-        ${apps.length
-          ? `<ul class="tool-list">${tools}</ul>`
-          : '<p class="muted">Noch keine Apps.</p>'}
-      </section>`,
+      <div data-home>
+        <section class="welcome-hero liquid-surface liquid-surface--accent">
+          <h1>handson.tools</h1>
+          <p class="welcome-lead">Die Apps von HANDS on TECHNOLOGY.</p>
+        </section>
+        <section class="section">
+          ${apps.length
+            ? `<ul class="tool-list">${tools}</ul>`
+            : '<p class="muted">Noch keine Apps.</p>'}
+        </section>
+      </div>`,
+    hub: `
+      <div class="hub" data-hub hidden>
+        <header class="hub__bar">
+          <button type="button" class="glass-btn-text" data-hub-home>Apps</button>
+          <span class="hub__title" data-hub-title></span>
+          <button type="button" class="glass-btn-text" data-hub-notify>Mitteilungen</button>
+          <button type="button" class="glass-btn-secondary glass-btn--sm" data-hub-external>Im Browser öffnen</button>
+        </header>
+        <iframe class="hub__frame" data-hub-frame title=""></iframe>
+        ${jsonScript('hub-config', {
+          baseDomain,
+          vapidPublicKey: process.env.VAPID_PUBLIC_KEY || '',
+          apps: hubApps,
+        })}
+      </div>`,
   });
 }
 
@@ -333,6 +370,7 @@ function generateAdminPage(store, baseDomain, user, query = {}) {
   return shellLayout({
     title: 'Apps · handson.tools',
     active: 'admin',
+    baseDomain,
     user,
     notices: flash(adminErrorMessage(query.error), 'err'),
     script,

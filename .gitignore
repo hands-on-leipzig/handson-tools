@@ -4,5 +4,6 @@ node_modules/
 logs/
 .pm2
 data/shorts.json.tmp
+data/push-subscriptions.json
 *.tmp
 

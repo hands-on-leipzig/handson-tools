@@ -253,6 +253,55 @@ html[data-theme='dark'] .flash--ok {
   margin-top: 0.25rem;
 }
 
+.hub[hidden] {
+  display: none !important;
+}
+
+.glass-app--hub .glass-sidebar,
+.glass-app--hub .glass-app__menu-toggle,
+.glass-app--hub .glass-app__backdrop,
+.glass-app--hub .hot-page {
+  display: none;
+}
+
+.hub {
+  display: flex;
+  flex-direction: column;
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  background: var(--color-bg, #fff);
+}
+
+.hub__bar {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem 0.6rem;
+  flex-shrink: 0;
+  min-height: 3rem;
+  padding: 0.35rem 0.7rem;
+  border-bottom: 1px solid var(--color-border, var(--liquid-border));
+  background: var(--liquid-tile-bg, #fff);
+}
+
+.hub__title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+.hub__frame {
+  flex: 1;
+  width: 100%;
+  min-height: 0;
+  border: 0;
+  background: #fff;
+}
+
 @media (max-width: 640px) {
   .app-row__top {
     flex-direction: column;

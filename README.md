@@ -18,6 +18,18 @@ Unknown apex paths are the one-link: they are proxied to the configured FLOW ori
 
 `/flow/*.png` is proxied to FLOW (logos). Bare `/flow` redirects to `flow.handson.tools`.
 
+## Installed app
+
+The apex is installable. In a browser tab the start page stays a list of links. Installed (`display-mode: standalone`), the same page keeps the window on `handson.tools` and opens the chosen app in an iframe on `{slug}.handson.tools`. `?hub=1` previews that layout in a normal tab.
+
+`/sw.js` does not handle fetches, so one-links such as `/norderstedt` still reach FLOW. The worker only receives pushes and notification clicks. A click opens `/?app={slug}&to={path}`.
+
+Proxied responses drop `X-Frame-Options` and set `frame-ancestors` so the apex may embed them. Other parents stay blocked.
+
+Apps detect the frame by a `hello` message (`source: "hands-on-shell"`) from `https://handson.tools`. `@hands-on/glass/shell` listens for it. Until `hello` arrives, an app behaves as a top-level page.
+
+`POST /push/subscribe` stores a browser subscription. `POST /admin/api/push` (admin login) sends `{ title, body, url }` when `VAPID_PUBLIC_KEY` and `VAPID_PRIVATE_KEY` are set. The button **Mitteilungen** asks for permission.
+
 ## DNS vs TLS
 
 Public DNS:

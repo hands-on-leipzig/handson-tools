@@ -78,7 +78,34 @@ function setForwarded(req) {
     || (socket.encrypted ? 'https' : 'http');
 }
 
-function createProxy() {
+/**
+ * Let the apex PWA embed proxied apps. Upstream frame-ancestors 'self' / DENY
+ * would leave the iframe blank. Other parents stay blocked.
+ */
+function relaxFraming(headers, ancestors) {
+  if (!headers || !ancestors) return headers;
+  for (const key of Object.keys(headers)) {
+    if (key.toLowerCase() === 'x-frame-options') delete headers[key];
+  }
+  const directive = `frame-ancestors 'self' ${ancestors}`;
+  const cspKeys = Object.keys(headers).filter((key) => key.toLowerCase() === 'content-security-policy');
+  if (!cspKeys.length) {
+    headers['content-security-policy'] = directive;
+    return headers;
+  }
+  for (const key of cspKeys) {
+    const parts = Array.isArray(headers[key]) ? headers[key] : [String(headers[key])];
+    headers[key] = parts.map((entry) => {
+      if (/frame-ancestors/i.test(entry)) return entry.replace(/frame-ancestors[^;]*/gi, directive);
+      const trimmed = entry.trim().replace(/;\s*$/, '');
+      return trimmed ? `${trimmed}; ${directive}` : directive;
+    }).join(', ');
+  }
+  return headers;
+}
+
+function createProxy(options = {}) {
+  const frameAncestors = options.frameAncestors || '';
   const proxy = httpProxy.createProxyServer({
     // Upstreams are name-based vhosts, so they must see their own Host header.
     changeOrigin: true,
@@ -91,6 +118,12 @@ function createProxy() {
     cookieDomainRewrite: '',
     proxyTimeout: UPSTREAM_TIMEOUT_MS,
   });
+
+  if (frameAncestors) {
+    proxy.on('proxyRes', (proxyRes) => {
+      relaxFraming(proxyRes.headers, frameAncestors);
+    });
+  }
 
   proxy.on('error', (error, req, res, target) => {
     console.error('Proxy error', {
@@ -130,4 +163,4 @@ function proxyWebSocket(proxy, req, socket, head, target, rewritePath) {
   proxy.ws(req, socket, head, { target, agent: agentFor(target) });
 }
 
-module.exports = { createProxy, proxyWeb, proxyWebSocket, errorPage };
+module.exports = { createProxy, proxyWeb, proxyWebSocket, errorPage, relaxFraming };

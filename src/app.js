@@ -7,6 +7,8 @@ const { loadStore, upsertApp, deleteApp, setListed, setApexTarget } = require('.
 const { resolve, originOf } = require('./resolve');
 const { generateIndexPage, generateAdminPage } = require('./pages');
 const { createProxy, proxyWeb, proxyWebSocket } = require('./proxy');
+const { addSubscription } = require('./pushStore');
+const { sendPush } = require('./pushSend');
 const { probe, hopFromEnv } = require('./egress');
 
 const STATIC_FILES = ['favicon.ico', 'hot.png'];
@@ -32,7 +34,11 @@ function glassRoot() {
 function createApp() {
   const app = express();
   const baseDomain = (process.env.BASE_DOMAIN || 'handson.tools').toLowerCase();
-  const proxy = createProxy();
+  const frameAncestors = [`https://${baseDomain}`];
+  if (process.env.NODE_ENV !== 'production') {
+    frameAncestors.push('http://localhost:3000', 'http://127.0.0.1:3000');
+  }
+  const proxy = createProxy({ frameAncestors: frameAncestors.join(' ') });
   let store = loadStore();
   const glassDir = glassRoot();
 
@@ -72,6 +78,30 @@ function createApp() {
     res.sendFile(path.join(__dirname, '..', 'public', 'shell.js'));
   });
 
+  app.get('/shell-protocol.js', onApex, (req, res) => {
+    res.sendFile(path.join(__dirname, '..', 'public', 'shell-protocol.js'));
+  });
+
+  function publicFile(name, type) {
+    app.get(`/${name}`, onApex, (req, res) => {
+      const headers = { 'Cache-Control': 'no-cache' };
+      if (type) headers['Content-Type'] = type;
+      res.sendFile(path.join(__dirname, '..', 'public', name), { headers });
+    });
+  }
+
+  publicFile('manifest.webmanifest', 'application/manifest+json');
+  publicFile('sw.js', 'application/javascript');
+  publicFile('pwa-192.png');
+  publicFile('pwa-512.png');
+  publicFile('apple-touch-icon.png');
+
+  app.post('/push/subscribe', onApex, ...parseBody, (req, res) => {
+    const result = addSubscription(req.body || {});
+    if (result.error) return res.status(400).json({ error: result.error });
+    res.json({ ok: true });
+  });
+
   app.use('/glass/styles', onApex, express.static(path.join(glassDir, 'styles'), { fallthrough: false }));
   app.use('/glass/fonts', onApex, express.static(path.join(glassDir, 'fonts'), { fallthrough: false }));
   app.use(
@@ -109,6 +139,14 @@ function createApp() {
     if (result.error) return res.status(404).json({ error: result.error });
     store = result.store;
     res.json({ message: 'Gelöscht', ...store });
+  });
+
+  app.post('/admin/api/push', onApex, ...parseBody, ensureAuthenticated, async (req, res) => {
+    try {
+      res.json(await sendPush(req.body || {}));
+    } catch (error) {
+      res.status(error.status || 500).json({ error: error.message || 'Push fehlgeschlagen' });
+    }
   });
 
   app.post('/admin/api/apex', onApex, ...parseBody, ensureAuthenticated, (req, res) => {

@@ -40,6 +40,11 @@ describe('pages', () => {
     assert.doesNotMatch(html, /Gateway/);
     assert.doesNotMatch(html, />Tools</);
     assert.doesNotMatch(html, /Adresse bleibt/);
+    assert.match(html, /rel="manifest"/);
+    assert.match(html, /data-app-slug="rg"/);
+    assert.match(html, /data-hub hidden/);
+    assert.match(html, /"slug":"rg"/);
+    assert.doesNotMatch(html, /"slug":"test-flow"/);
   });
 
   it('omits unlisted slugs from the public index', () => {

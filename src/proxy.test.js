@@ -1,7 +1,7 @@
 const { describe, it, before, after } = require('node:test');
 const assert = require('node:assert/strict');
 const http = require('http');
-const { createProxy, proxyWeb } = require('./proxy');
+const { createProxy, proxyWeb, relaxFraming } = require('./proxy');
 
 const VANITY_HOST = 'rg.handson.tools';
 
@@ -46,6 +46,15 @@ describe('gateway proxy', () => {
       res.end('ok');
       return;
     }
+    if (req.url === '/framed') {
+      res.writeHead(200, {
+        'X-Frame-Options': 'DENY',
+        'Content-Security-Policy': "default-src 'self'; frame-ancestors 'none'",
+        'Content-Type': 'text/html',
+      });
+      res.end('frame');
+      return;
+    }
     res.writeHead(200, { 'Content-Type': 'text/plain' });
     res.end(req.url);
   });
@@ -60,7 +69,7 @@ describe('gateway proxy', () => {
     deadPort = await listen(dead);
     await close(dead);
 
-    const proxy = createProxy();
+    const proxy = createProxy({ frameAncestors: 'https://handson.tools' });
     gateway = http.createServer((req, res) => {
       const target = req.url.startsWith('/dead')
         ? `http://127.0.0.1:${deadPort}`
@@ -103,6 +112,21 @@ describe('gateway proxy', () => {
   it('drops the upstream cookie domain so the session belongs to the vanity host', async () => {
     const res = await request(gatewayPort, '/cookie');
     assert.ok(!/domain=/i.test(String(res.headers['set-cookie'])));
+  });
+
+  it('lets the apex embed an upstream that refused frames', async () => {
+    const res = await request(gatewayPort, '/framed');
+    assert.equal(res.headers['x-frame-options'], undefined);
+    assert.match(res.headers['content-security-policy'], /frame-ancestors 'self' https:\/\/handson\.tools/);
+    assert.doesNotMatch(res.headers['content-security-policy'], /frame-ancestors 'none'/);
+  });
+
+  it('keeps a unit header rewrite when there is no policy yet', () => {
+    const headers = { 'X-Frame-Options': 'SAMEORIGIN' };
+    relaxFraming(headers, 'https://handson.tools');
+    assert.equal(headers['x-frame-options'], undefined);
+    assert.equal(headers['X-Frame-Options'], undefined);
+    assert.equal(headers['content-security-policy'], "frame-ancestors 'self' https://handson.tools");
   });
 
   it('answers an unreachable upstream with 502 instead of hanging', async () => {

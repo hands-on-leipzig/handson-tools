@@ -16,6 +16,7 @@ const PLANNER_PREFIXES = new Set([
   'sanctum', 'legacy', 'output',
 ]);
 
+/** Served by the gateway itself. Blocking them here stops FLOW's worker from being proxied onto the apex. */
 const BLOCKED_APEX_FILES = [
   /^\/sw\.js$/i,
   /^\/registerSW\.js$/i,
