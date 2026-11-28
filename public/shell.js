@@ -148,7 +148,7 @@
   var titleEl = hub.querySelector('[data-hub-title]');
   var homeBtn = hub.querySelector('[data-hub-home]');
   var externalBtn = hub.querySelector('[data-hub-external]');
-  var notifyBtn = hub.querySelector('[data-hub-notify]');
+  var notifyBtn = document.querySelector('[data-hub-notify]');
   var frameOrigin = '';
   var current = null;
 
@@ -164,6 +164,106 @@
 
   document.documentElement.classList.add('is-standalone');
 
+  var day = document.querySelector('[data-day]');
+  var eventBlock = document.querySelector('[data-day-event]');
+  var STORE = 'hands-on-day';
+  var SHEETS = {
+    leipzig: {
+      name: 'Leipzig',
+      date: 'Samstag, 28. November',
+      nowTitle: 'Robot Game',
+      nowMeta: 'Tischrunde 2 · 10:40–11:25',
+      nowSlug: 'rg',
+      rows: ['Als Nächstes · Jury, Raum B · 11:30', 'Check-in · 12 Teams noch nicht da'],
+      schedule: ['09:00 · Eröffnung · Bühne', '10:40 · Robot Game, Tischrunde 2', '11:30 · Jury, Raum B', '12:15 · Mittag · Foyer', '16:00 · Preisverleihung · Bühne'],
+    },
+    halle: {
+      name: 'Halle',
+      date: 'Samstag, 28. November',
+      nowTitle: 'Jury',
+      nowMeta: 'Runde 1 · 10:15–11:00',
+      nowSlug: 'jury',
+      rows: ['Als Nächstes · Robot Game, Tischrunde 1 · 11:05', 'Check-in · 4 Teams noch nicht da'],
+      schedule: ['09:30 · Eröffnung · Halle', '10:15 · Jury, Runde 1', '11:05 · Robot Game, Tischrunde 1', '12:30 · Mittag', '15:30 · Preisverleihung'],
+    },
+    dresden: {
+      name: 'Dresden',
+      date: 'Samstag, 28. November',
+      nowTitle: 'Check-in',
+      nowMeta: 'Einlass · bis 10:00',
+      nowSlug: 'flow',
+      rows: ['Als Nächstes · Eröffnung · 10:00', 'Pfand · Ausgabe am Einlass'],
+      schedule: ['08:30 · Check-in', '10:00 · Eröffnung', '10:45 · Robot Game, Tischrunde 1', '13:00 · Mittag', '16:30 · Preisverleihung'],
+    },
+  };
+
+  function readStore() {
+    try {
+      return JSON.parse(localStorage.getItem(STORE)) || {};
+    } catch (error) {
+      return {};
+    }
+  }
+
+  function writeStore(patch) {
+    var next = readStore();
+    Object.keys(patch).forEach(function (key) { next[key] = patch[key]; });
+    try { localStorage.setItem(STORE, JSON.stringify(next)); } catch (error) {}
+    return next;
+  }
+
+  function fillList(el, lines) {
+    if (!el) return;
+    el.replaceChildren();
+    lines.forEach(function (line) {
+      var item = document.createElement('div');
+      item.className = 'glass-list__item';
+      item.textContent = line;
+      el.appendChild(item);
+    });
+  }
+
+  function applyEvent(id) {
+    var sheet = SHEETS[id] || SHEETS.leipzig;
+    document.querySelectorAll('[data-event-name]').forEach(function (node) { node.textContent = sheet.name; });
+    document.querySelectorAll('[data-event-date]').forEach(function (node) { node.textContent = sheet.date; });
+    var title = document.querySelector('[data-now-title]');
+    var meta = document.querySelector('[data-now-meta]');
+    if (title) title.textContent = sheet.nowTitle;
+    if (meta) meta.textContent = sheet.nowMeta;
+    var openNow = document.querySelector('[data-day-panel="heute"] [data-open-slug]');
+    if (openNow) {
+      openNow.setAttribute('data-open-slug', sheet.nowSlug);
+      openNow.setAttribute('data-app-title', sheet.nowTitle);
+    }
+    fillList(document.querySelector('[data-now-list]'), sheet.rows);
+    fillList(document.querySelector('[data-schedule]'), sheet.schedule);
+    document.querySelectorAll('[data-pick-event]').forEach(function (button) {
+      button.setAttribute('aria-pressed', button.getAttribute('data-pick-event') === sheet.id ? 'true' : 'false');
+    });
+    writeStore({ event: id in SHEETS ? id : 'leipzig' });
+  }
+
+  SHEETS.leipzig.id = 'leipzig';
+  SHEETS.halle.id = 'halle';
+  SHEETS.dresden.id = 'dresden';
+
+  function showTab(name) {
+    document.querySelectorAll('[data-day-tab]').forEach(function (tab) {
+      var on = tab.getAttribute('data-day-tab') === name;
+      tab.classList.toggle('glass-page-tab--active', on);
+      tab.setAttribute('aria-selected', on ? 'true' : 'false');
+    });
+    document.querySelectorAll('[data-day-panel]').forEach(function (panel) {
+      panel.hidden = panel.getAttribute('data-day-panel') !== name;
+    });
+    writeStore({ tab: name, screen: 'home' });
+  }
+
+  if (home) home.hidden = true;
+  if (day) day.hidden = false;
+  if (eventBlock) eventBlock.hidden = false;
+
   function appBySlug(slug) {
     return (config.apps || []).find(function (row) { return row.slug === slug; }) || null;
   }
@@ -178,6 +278,9 @@
     hub.hidden = true;
     appEl.classList.remove('glass-app--hub');
     frame.src = 'about:blank';
+    if (day) day.hidden = false;
+    if (home) home.hidden = true;
+    writeStore({ screen: 'home' });
     if (push) history.pushState({ hub: false }, '', homeUrl());
   }
 
@@ -197,6 +300,7 @@
     hub.hidden = false;
     appEl.classList.add('glass-app--hub');
     frame.src = protocol.frameUrl(slug, config.baseDomain, current.path);
+    writeStore({ screen: 'tool', slug: current.slug, path: current.path, title: current.title });
     if (push) {
       var next = new URL(homeUrl(), window.location.origin);
       next.searchParams.set('app', slug);
@@ -260,6 +364,24 @@
     }).catch(function () {});
   }
 
+  document.querySelectorAll('[data-day-tab]').forEach(function (tab) {
+    tab.addEventListener('click', function () {
+      showTab(tab.getAttribute('data-day-tab'));
+    });
+  });
+
+  document.querySelectorAll('[data-pick-event]').forEach(function (button) {
+    button.addEventListener('click', function () {
+      applyEvent(button.getAttribute('data-pick-event'));
+    });
+  });
+
+  document.querySelectorAll('[data-open-slug]').forEach(function (button) {
+    button.addEventListener('click', function () {
+      openApp(button.getAttribute('data-open-slug'), '/', button.getAttribute('data-app-title'), true);
+    });
+  });
+
   home.addEventListener('click', function (event) {
     var node = event.target && event.target.nodeType === 1 ? event.target : event.target && event.target.parentElement;
     var card = node && node.closest('[data-app-slug]');
@@ -268,12 +390,12 @@
     openApp(card.getAttribute('data-app-slug'), '/', card.getAttribute('data-app-title'), true);
   });
 
-  homeBtn.addEventListener('click', function () { showHome(true); });
-  externalBtn.addEventListener('click', function () {
+  if (homeBtn) homeBtn.addEventListener('click', function () { showHome(true); });
+  if (externalBtn) externalBtn.addEventListener('click', function () {
     var url = externalBtn.getAttribute('data-url');
     if (url) window.open(url, '_blank', 'noopener');
   });
-  notifyBtn.addEventListener('click', function () {
+  if (notifyBtn) notifyBtn.addEventListener('click', function () {
     if (!window.Notification) return;
     Notification.requestPermission().then(function (permission) {
       if (permission === 'granted') subscribe();
@@ -298,6 +420,11 @@
     else showHome(false);
   });
 
+  var stored = readStore();
+  applyEvent(stored.event || 'leipzig');
+  showTab(stored.tab || 'heute');
+
   var initial = protocol.hubQuery(window.location.href, config);
   if (initial) openApp(initial.slug, initial.path, initial.title, false);
+  else if (stored.screen === 'tool' && stored.slug) openApp(stored.slug, stored.path || '/', stored.title, false);
 })();

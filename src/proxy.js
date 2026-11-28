@@ -79,8 +79,34 @@ function setForwarded(req) {
 }
 
 /**
- * Let the apex PWA embed proxied apps. Upstream frame-ancestors 'self' / DENY
- * would leave the iframe blank. Other parents stay blocked.
+ * Parents allowed to embed a proxied page. The apex PWA frames the app hosts.
+ * JOIN and HERO frame the public one-link on the apex. Replacing an upstream
+ * `frame-ancestors 'self'` must keep those parents, or the iframe shows
+ * "refused to connect".
+ */
+function frameAncestorSources(baseDomain, dev) {
+  const sources = [
+    `https://${baseDomain}`,
+    'https://*.hands-on-technology.org',
+  ];
+  if (dev) {
+    sources.push(
+      'http://localhost:3000',
+      'http://127.0.0.1:3000',
+      'http://localhost:5173',
+      'http://localhost:5174',
+      'http://localhost:5175',
+      'http://127.0.0.1:5173',
+      'http://127.0.0.1:5174',
+      'http://127.0.0.1:5175',
+    );
+  }
+  return sources;
+}
+
+/**
+ * Let those parents embed proxied apps. Upstream frame-ancestors 'self' / DENY
+ * would leave the iframe blank.
  */
 function relaxFraming(headers, ancestors) {
   if (!headers || !ancestors) return headers;
@@ -163,4 +189,4 @@ function proxyWebSocket(proxy, req, socket, head, target, rewritePath) {
   proxy.ws(req, socket, head, { target, agent: agentFor(target) });
 }
 
-module.exports = { createProxy, proxyWeb, proxyWebSocket, errorPage, relaxFraming };
+module.exports = { createProxy, proxyWeb, proxyWebSocket, errorPage, relaxFraming, frameAncestorSources };

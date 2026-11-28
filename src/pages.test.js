@@ -43,6 +43,9 @@ describe('pages', () => {
     assert.match(html, /rel="manifest"/);
     assert.match(html, /data-app-slug="rg"/);
     assert.match(html, /data-hub hidden/);
+    assert.match(html, /data-day hidden/);
+    assert.match(html, /glass-page-tabs/);
+    assert.match(html, /glass-card/);
     assert.match(html, /"slug":"rg"/);
     assert.doesNotMatch(html, /"slug":"test-flow"/);
   });

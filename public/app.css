@@ -273,25 +273,33 @@ html[data-theme='dark'] .flash--ok {
   background: var(--color-bg, #fff);
 }
 
-.hub__bar {
-  display: flex;
-  align-items: center;
-  gap: 0.35rem 0.6rem;
+.hub .glass-panel-header {
   flex-shrink: 0;
-  min-height: 3rem;
-  padding: 0.35rem 0.7rem;
-  border-bottom: 1px solid var(--color-border, var(--liquid-border));
+  margin: 0;
+  padding: 0.65rem 0.85rem;
   background: var(--liquid-tile-bg, #fff);
 }
 
-.hub__title {
+.hub .glass-panel-header strong {
   flex: 1;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-weight: 700;
-  color: var(--color-text);
+}
+
+[data-day] {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+[data-day][hidden] {
+  display: none !important;
+}
+
+[data-day] .glass-card + .glass-list {
+  margin-top: 0.75rem;
 }
 
 .hub__frame {

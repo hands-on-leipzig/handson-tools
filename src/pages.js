@@ -64,7 +64,7 @@ function jsonScript(id, value) {
   return `<script type="application/json" id="${id}">${json}</script>`;
 }
 
-function shellLayout({ title, active, user, notices = '', main, script = '', hub = '', baseDomain = '' }) {
+function shellLayout({ title, active, user, notices = '', main, script = '', hub = '', baseDomain = '', settingsExtra = '' }) {
   const userLabel = user && (user.name || user.email) ? (user.name || user.email) : '';
   const identity = userLabel
     ? `
@@ -104,6 +104,7 @@ function shellLayout({ title, active, user, notices = '', main, script = '', hub
   <script>${THEME_BOOT}</script>
   <link rel="stylesheet" href="/icons/bootstrap-icons.css">
   <link rel="stylesheet" href="/glass/styles/index.css">
+  <link rel="stylesheet" href="/glass/styles/content.css">
   <link rel="stylesheet" href="/app.css">
 </head>
 <body>
@@ -149,6 +150,7 @@ function shellLayout({ title, active, user, notices = '', main, script = '', hub
                   </div>
                 </div>
               </div>
+              ${settingsExtra}
               <a class="glass-sidebar-footer__menu-item" href="/admin" role="menuitem">
                 <i class="bi bi-sliders" aria-hidden="true"></i>
                 <span>Apps verwalten</span>
@@ -206,6 +208,11 @@ function generateIndexPage(store, baseDomain, notFoundSlug = null, query = {}, u
     target: app.target,
   }));
 
+  const placeTools = apps.map((app) => `
+    <button type="button" class="glass-list__item" data-open-slug="${escapeHtml(app.slug)}" data-app-title="${escapeHtml(toolTitle(app))}">
+      ${escapeHtml(toolTitle(app))}
+    </button>`).join('');
+
   return shellLayout({
     title: 'handson.tools',
     active: 'home',
@@ -223,13 +230,54 @@ function generateIndexPage(store, baseDomain, notFoundSlug = null, query = {}, u
             ? `<ul class="tool-list">${tools}</ul>`
             : '<p class="muted">Noch keine Apps.</p>'}
         </section>
+      </div>
+      <div data-day hidden>
+        <div class="glass-panel-header">
+          <strong data-event-name>Leipzig</strong>
+          <span data-event-date>Samstag, 28. November</span>
+        </div>
+        <nav class="glass-page-tabs glass-page-tabs--fill" role="tablist" aria-label="Eventtag">
+          <button type="button" class="glass-page-tab glass-page-tab--active" role="tab" data-day-tab="heute" aria-selected="true">Heute</button>
+          <button type="button" class="glass-page-tab" role="tab" data-day-tab="ablauf" aria-selected="false">Ablauf</button>
+          <button type="button" class="glass-page-tab" role="tab" data-day-tab="ort" aria-selected="false">Vor Ort</button>
+        </nav>
+        <div data-day-panel="heute">
+          <div class="glass-card liquid-surface liquid-surface--accent">
+            <div class="glass-card__heading">Jetzt</div>
+            <div class="glass-card__title" data-now-title>Robot Game</div>
+            <p data-now-meta>Tischrunde 2 · 10:40–11:25</p>
+            <button type="button" class="glass-btn-accent" data-open-slug="rg" data-app-title="Robot Game">Timer öffnen</button>
+          </div>
+          <div class="glass-list glass-surface" data-now-list>
+            <div class="glass-list__item">Als Nächstes · Jury, Raum B · 11:30</div>
+            <div class="glass-list__item">Check-in · 12 Teams noch nicht da</div>
+          </div>
+        </div>
+        <div data-day-panel="ablauf" hidden>
+          <div class="glass-list glass-surface" data-schedule></div>
+        </div>
+        <div data-day-panel="ort" hidden>
+          <div class="glass-list glass-surface">
+            ${placeTools || '<div class="glass-list__item">Noch keine Apps.</div>'}
+          </div>
+        </div>
+      </div>`,
+    settingsExtra: `
+      <div class="glass-settings-block" data-day-event hidden>
+        <span class="glass-settings-label">Event</span>
+        <p class="glass-settings-hint">Einmal wählen. Bleibt auf diesem Gerät gespeichert.</p>
+        <div class="glass-list glass-surface">
+          <button type="button" class="glass-list__item" data-pick-event="leipzig" aria-pressed="true">Leipzig</button>
+          <button type="button" class="glass-list__item" data-pick-event="halle" aria-pressed="false">Halle</button>
+          <button type="button" class="glass-list__item" data-pick-event="dresden" aria-pressed="false">Dresden</button>
+        </div>
+        <button type="button" class="glass-btn-secondary glass-btn--sm" data-hub-notify>Mitteilungen einschalten</button>
       </div>`,
     hub: `
       <div class="hub" data-hub hidden>
-        <header class="hub__bar">
-          <button type="button" class="glass-btn-text" data-hub-home>Apps</button>
-          <span class="hub__title" data-hub-title></span>
-          <button type="button" class="glass-btn-text" data-hub-notify>Mitteilungen</button>
+        <header class="glass-panel-header">
+          <button type="button" class="glass-btn-text" data-hub-home>Heute</button>
+          <strong data-hub-title></strong>
           <button type="button" class="glass-btn-secondary glass-btn--sm" data-hub-external>Im Browser öffnen</button>
         </header>
         <iframe class="hub__frame" data-hub-frame title=""></iframe>

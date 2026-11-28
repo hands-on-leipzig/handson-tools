@@ -24,7 +24,7 @@ The apex is installable. In a browser tab the start page stays a list of links. 
 
 `/sw.js` does not handle fetches, so one-links such as `/norderstedt` still reach FLOW. The worker only receives pushes and notification clicks. A click opens `/?app={slug}&to={path}`.
 
-Proxied responses drop `X-Frame-Options` and set `frame-ancestors` so the apex may embed them. Other parents stay blocked.
+Proxied responses drop `X-Frame-Options` and set `frame-ancestors` so the apex may embed the app hosts, and `https://*.hands-on-technology.org` may embed the public one-link. Other parents stay blocked.
 
 Apps detect the frame by a `hello` message (`source: "hands-on-shell"`) from `https://handson.tools`. `@hands-on/glass/shell` listens for it. Until `hello` arrives, an app behaves as a top-level page.
 

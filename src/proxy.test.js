@@ -1,7 +1,7 @@
 const { describe, it, before, after } = require('node:test');
 const assert = require('node:assert/strict');
 const http = require('http');
-const { createProxy, proxyWeb, relaxFraming } = require('./proxy');
+const { createProxy, proxyWeb, relaxFraming, frameAncestorSources } = require('./proxy');
 
 const VANITY_HOST = 'rg.handson.tools';
 
@@ -119,6 +119,13 @@ describe('gateway proxy', () => {
     assert.equal(res.headers['x-frame-options'], undefined);
     assert.match(res.headers['content-security-policy'], /frame-ancestors 'self' https:\/\/handson\.tools/);
     assert.doesNotMatch(res.headers['content-security-policy'], /frame-ancestors 'none'/);
+  });
+
+  it('lets JOIN embed the public one-link and the apex embed the apps', () => {
+    const sources = frameAncestorSources('handson.tools', false);
+    assert.ok(sources.includes('https://handson.tools'));
+    assert.ok(sources.includes('https://*.hands-on-technology.org'));
+    assert.equal(sources.some((source) => source.includes('localhost')), false);
   });
 
   it('keeps a unit header rewrite when there is no policy yet', () => {

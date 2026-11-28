@@ -6,7 +6,7 @@ const { configureAuth } = require('./auth');
 const { loadStore, upsertApp, deleteApp, setListed, setApexTarget } = require('./shortsStore');
 const { resolve, originOf } = require('./resolve');
 const { generateIndexPage, generateAdminPage } = require('./pages');
-const { createProxy, proxyWeb, proxyWebSocket } = require('./proxy');
+const { createProxy, proxyWeb, proxyWebSocket, frameAncestorSources } = require('./proxy');
 const { addSubscription } = require('./pushStore');
 const { sendPush } = require('./pushSend');
 const { probe, hopFromEnv } = require('./egress');
@@ -18,10 +18,12 @@ const REFERENCE_TARGETS = (process.env.EGRESS_REFERENCE
   || 'https://one.one.one.one,https://www.google.com').split(',').map((entry) => entry.trim()).filter(Boolean);
 
 function glassRoot() {
+  // Sibling checkout wins over node_modules so local dev uses the current
+  // capsule tabs, not an older package that still draws the orange baseline.
   const candidates = [
     process.env.GLASS_ROOT,
-    path.join(__dirname, '..', 'node_modules', '@hands-on', 'glass'),
     path.join(__dirname, '..', '..', 'glass'),
+    path.join(__dirname, '..', 'node_modules', '@hands-on', 'glass'),
   ].filter(Boolean);
   for (const dir of candidates) {
     if (fs.existsSync(path.join(dir, 'styles', 'index.css'))) return dir;
@@ -34,10 +36,7 @@ function glassRoot() {
 function createApp() {
   const app = express();
   const baseDomain = (process.env.BASE_DOMAIN || 'handson.tools').toLowerCase();
-  const frameAncestors = [`https://${baseDomain}`];
-  if (process.env.NODE_ENV !== 'production') {
-    frameAncestors.push('http://localhost:3000', 'http://127.0.0.1:3000');
-  }
+  const frameAncestors = frameAncestorSources(baseDomain, process.env.NODE_ENV !== 'production');
   const proxy = createProxy({ frameAncestors: frameAncestors.join(' ') });
   let store = loadStore();
   const glassDir = glassRoot();
