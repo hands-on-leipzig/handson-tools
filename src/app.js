@@ -36,6 +36,8 @@ function glassRoot() {
 function createApp() {
   const app = express();
   const baseDomain = (process.env.BASE_DOMAIN || 'handson.tools').toLowerCase();
+  const buildId = process.env.BUILD_ID || String(Date.now());
+  process.env.BUILD_ID = buildId;
   const frameAncestors = frameAncestorSources(baseDomain, process.env.NODE_ENV !== 'production');
   const proxy = createProxy({ frameAncestors: frameAncestors.join(' ') });
   let store = loadStore();
@@ -74,11 +76,18 @@ function createApp() {
   });
 
   app.get('/shell.js', onApex, (req, res) => {
+    res.set('Cache-Control', 'no-cache');
     res.sendFile(path.join(__dirname, '..', 'public', 'shell.js'));
   });
 
   app.get('/shell-protocol.js', onApex, (req, res) => {
+    res.set('Cache-Control', 'no-cache');
     res.sendFile(path.join(__dirname, '..', 'public', 'shell-protocol.js'));
+  });
+
+  app.get('/gateway-build', onApex, (req, res) => {
+    res.set('Cache-Control', 'no-store');
+    res.json({ id: buildId });
   });
 
   function publicFile(name, type) {
@@ -188,6 +197,7 @@ function createApp() {
       case 'gateway':
         return res.status(404).send('Not found');
       case 'index':
+        res.set('Cache-Control', 'no-store');
         return res.send(generateIndexPage(store, baseDomain, null, req.query || {}, req.user || null));
       case 'block':
         return res.status(404).end();

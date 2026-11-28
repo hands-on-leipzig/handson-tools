@@ -64,7 +64,7 @@ function jsonScript(id, value) {
   return `<script type="application/json" id="${id}">${json}</script>`;
 }
 
-function shellLayout({ title, active, user, notices = '', main, script = '', hub = '', baseDomain = '', settingsExtra = '' }) {
+function shellLayout({ title, active, user, notices = '', main, script = '', hub = '', baseDomain = '', settingsExtra = '', mobileChrome = '' }) {
   const userLabel = user && (user.name || user.email) ? (user.name || user.email) : '';
   const identity = userLabel
     ? `
@@ -100,6 +100,7 @@ function shellLayout({ title, active, user, notices = '', main, script = '', hub
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-title" content="HANDS on">
+  <meta name="hands-on-build" content="${escapeHtml(process.env.BUILD_ID || '')}">
   <link rel="apple-touch-icon" href="/apple-touch-icon.png">
   <script>${THEME_BOOT}</script>
   <link rel="stylesheet" href="/icons/bootstrap-icons.css">
@@ -115,6 +116,9 @@ function shellLayout({ title, active, user, notices = '', main, script = '', hub
     <div class="glass-app__backdrop" aria-hidden="true"></div>
 
     <aside class="glass-sidebar liquid-surface">
+      <button type="button" class="glass-sidebar__sheet-handle" data-sheet-close aria-label="Menü schließen">
+        <span class="glass-sidebar__sheet-handle-bar" aria-hidden="true"></span>
+      </button>
       <div class="glass-sidebar__brand-row">
         <div class="glass-sidebar__brand-slot">
           <a href="/" class="glass-sidebar__brand hot-brand">
@@ -164,12 +168,17 @@ function shellLayout({ title, active, user, notices = '', main, script = '', hub
     <main class="glass-app__main">
       <div class="glass-app__panel">
         <div class="glass-app__panel-body hot-page">
+          <div class="glass-alert-warning" data-build-banner hidden>
+            Neue Version bereit.
+            <button type="button" class="glass-btn-accent glass-btn--sm" data-build-reload>Aktualisieren</button>
+          </div>
           ${notices}
           ${main}
         </div>
       </div>
     </main>
     ${hub}
+    ${mobileChrome}
   </div>
   <script src="/shell-protocol.js"></script>
   <script src="/shell.js"></script>
@@ -209,8 +218,10 @@ function generateIndexPage(store, baseDomain, notFoundSlug = null, query = {}, u
   }));
 
   const placeTools = apps.map((app) => `
-    <button type="button" class="glass-list__item" data-open-slug="${escapeHtml(app.slug)}" data-app-title="${escapeHtml(toolTitle(app))}">
-      ${escapeHtml(toolTitle(app))}
+    <button type="button" class="glass-stack-card glass-stack-card--interactive" data-open-slug="${escapeHtml(app.slug)}" data-app-title="${escapeHtml(toolTitle(app))}">
+      <i class="bi ${toolIcon(app.slug)}" aria-hidden="true"></i>
+      <strong>${escapeHtml(toolTitle(app))}</strong>
+      ${toolSubtitle(app) ? `<span class="glass-hero__meta">${escapeHtml(toolSubtitle(app))}</span>` : ''}
     </button>`).join('');
 
   return shellLayout({
@@ -232,36 +243,57 @@ function generateIndexPage(store, baseDomain, notFoundSlug = null, query = {}, u
         </section>
       </div>
       <div data-day hidden>
-        <div class="glass-panel-header">
-          <strong data-event-name>Leipzig</strong>
-          <span data-event-date>Samstag, 28. November</span>
-        </div>
-        <nav class="glass-page-tabs glass-page-tabs--fill" role="tablist" aria-label="Eventtag">
-          <button type="button" class="glass-page-tab glass-page-tab--active" role="tab" data-day-tab="heute" aria-selected="true">Heute</button>
-          <button type="button" class="glass-page-tab" role="tab" data-day-tab="ablauf" aria-selected="false">Ablauf</button>
-          <button type="button" class="glass-page-tab" role="tab" data-day-tab="ort" aria-selected="false">Vor Ort</button>
-        </nav>
-        <div data-day-panel="heute">
-          <div class="glass-card liquid-surface liquid-surface--accent">
-            <div class="glass-card__heading">Jetzt</div>
-            <div class="glass-card__title" data-now-title>Robot Game</div>
-            <p data-now-meta>Tischrunde 2 · 10:40–11:25</p>
-            <button type="button" class="glass-btn-accent" data-open-slug="rg" data-app-title="Robot Game">Timer öffnen</button>
+        <div class="glass-day-stack" data-day-panel="heute">
+          <div>
+            <p class="glass-hero__kicker" data-event-date>Samstag, 28. November</p>
+            <div class="glass-hero__title" data-event-name>Leipzig</div>
           </div>
-          <div class="glass-list glass-surface" data-now-list>
-            <div class="glass-list__item">Als Nächstes · Jury, Raum B · 11:30</div>
-            <div class="glass-list__item">Check-in · 12 Teams noch nicht da</div>
-          </div>
+          <section class="glass-hero liquid-surface liquid-surface--accent">
+            <p class="glass-hero__kicker">Jetzt</p>
+            <div class="glass-hero__title" data-now-title>Robot Game</div>
+            <p class="glass-hero__meta" data-now-meta>Tischrunde 2 · 10:40–11:25</p>
+            <button type="button" class="glass-btn-accent glass-btn--block" data-open-slug="rg" data-app-title="Robot Game">Timer öffnen</button>
+          </section>
+          <div class="glass-day-stack" data-now-list></div>
         </div>
         <div data-day-panel="ablauf" hidden>
-          <div class="glass-list glass-surface" data-schedule></div>
+          <iframe class="day-plan" data-plan-frame title="Öffentlicher Zeitplan"></iframe>
         </div>
         <div data-day-panel="ort" hidden>
-          <div class="glass-list glass-surface">
-            ${placeTools || '<div class="glass-list__item">Noch keine Apps.</div>'}
+          <div class="glass-tile-grid">
+            ${placeTools || '<div class="glass-stack-card">Noch keine Apps.</div>'}
           </div>
         </div>
       </div>`,
+    mobileChrome: `
+      <header class="glass-app__mobile-top">
+        <div class="glass-app__mobile-top-inner">
+          <div class="glass-app__mobile-top-brand">
+            <img class="glass-sidebar__brand-logo" src="/hot.png" alt="HANDS on TECHNOLOGY">
+          </div>
+        </div>
+      </header>
+      <nav class="glass-app__mobile-tabs" aria-label="Eventtag">
+        <span class="glass-app__tab-bubble" hidden>
+          <span class="glass-app__tab-bubble-lens"></span>
+        </span>
+        <button type="button" class="glass-app__mobile-tab glass-app__mobile-tab--active" data-day-tab="heute" aria-selected="true">
+          <i class="bi bi-sun" aria-hidden="true"></i>
+          <span class="glass-app__mobile-tab-label">Heute</span>
+        </button>
+        <button type="button" class="glass-app__mobile-tab" data-day-tab="ablauf" aria-selected="false">
+          <i class="bi bi-list-ul" aria-hidden="true"></i>
+          <span class="glass-app__mobile-tab-label">Ablauf</span>
+        </button>
+        <button type="button" class="glass-app__mobile-tab" data-day-tab="ort" aria-selected="false">
+          <i class="bi bi-geo-alt" aria-hidden="true"></i>
+          <span class="glass-app__mobile-tab-label">Vor Ort</span>
+        </button>
+        <button type="button" class="glass-app__mobile-tab glass-app__mobile-tab--more" data-day-more aria-pressed="false">
+          <i class="bi bi-three-dots" aria-hidden="true"></i>
+          <span class="glass-app__mobile-tab-label">Mehr</span>
+        </button>
+      </nav>`,
     settingsExtra: `
       <div class="glass-settings-block" data-day-event hidden>
         <span class="glass-settings-label">Event</span>

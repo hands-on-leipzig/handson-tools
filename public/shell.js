@@ -4,6 +4,38 @@
     navigator.serviceWorker.register('/sw.js').catch(function () {});
   }
 
+  var buildMeta = document.querySelector('meta[name="hands-on-build"]');
+  var buildBanner = document.querySelector('[data-build-banner]');
+  var currentBuild = buildMeta ? buildMeta.getAttribute('content') : '';
+  var reloadBtn = document.querySelector('[data-build-reload]');
+
+  function checkBuild() {
+    if (!currentBuild || !buildBanner) return;
+    fetch('/gateway-build', { cache: 'no-store' }).then(function (res) {
+      return res.ok ? res.json() : null;
+    }).then(function (body) {
+      if (body && body.id && body.id !== currentBuild) buildBanner.hidden = false;
+    }).catch(function () {});
+  }
+
+  if (reloadBtn) {
+    reloadBtn.addEventListener('click', function () {
+      function reload() { window.location.reload(); }
+      if (!navigator.serviceWorker) { reload(); return; }
+      navigator.serviceWorker.getRegistration().then(function (registration) {
+        return registration ? registration.update() : null;
+      }).then(reload, reload);
+    });
+  }
+
+  if (currentBuild) {
+    checkBuild();
+    document.addEventListener('visibilitychange', function () {
+      if (document.visibilityState === 'visible') checkBuild();
+    });
+    window.setInterval(checkBuild, 60000);
+  }
+
   var THEME_KEY = 'hands-on-theme';
   var COLLAPSE_KEY = 'hands-on-sidebar-collapsed';
   var app = document.querySelector('.glass-app');
@@ -174,8 +206,12 @@
       nowTitle: 'Robot Game',
       nowMeta: 'Tischrunde 2 · 10:40–11:25',
       nowSlug: 'rg',
-      rows: ['Als Nächstes · Jury, Raum B · 11:30', 'Check-in · 12 Teams noch nicht da'],
-      schedule: ['09:00 · Eröffnung · Bühne', '10:40 · Robot Game, Tischrunde 2', '11:30 · Jury, Raum B', '12:15 · Mittag · Foyer', '16:00 · Preisverleihung · Bühne'],
+      plan: 'leipzig',
+      rows: [
+        { kicker: 'Als Nächstes', title: 'Jury', meta: 'Raum B · 11:30' },
+        { kicker: 'Check-in', title: '12 Teams', meta: 'noch nicht da' },
+      ],
+      schedule: [],
     },
     halle: {
       name: 'Halle',
@@ -183,8 +219,12 @@
       nowTitle: 'Jury',
       nowMeta: 'Runde 1 · 10:15–11:00',
       nowSlug: 'jury',
-      rows: ['Als Nächstes · Robot Game, Tischrunde 1 · 11:05', 'Check-in · 4 Teams noch nicht da'],
-      schedule: ['09:30 · Eröffnung · Halle', '10:15 · Jury, Runde 1', '11:05 · Robot Game, Tischrunde 1', '12:30 · Mittag', '15:30 · Preisverleihung'],
+      plan: 'halle',
+      rows: [
+        { kicker: 'Als Nächstes', title: 'Robot Game', meta: 'Tischrunde 1 · 11:05' },
+        { kicker: 'Check-in', title: '4 Teams', meta: 'noch nicht da' },
+      ],
+      schedule: [],
     },
     dresden: {
       name: 'Dresden',
@@ -192,8 +232,12 @@
       nowTitle: 'Check-in',
       nowMeta: 'Einlass · bis 10:00',
       nowSlug: 'flow',
-      rows: ['Als Nächstes · Eröffnung · 10:00', 'Pfand · Ausgabe am Einlass'],
-      schedule: ['08:30 · Check-in', '10:00 · Eröffnung', '10:45 · Robot Game, Tischrunde 1', '13:00 · Mittag', '16:30 · Preisverleihung'],
+      plan: 'dresden',
+      rows: [
+        { kicker: 'Als Nächstes', title: 'Eröffnung', meta: '10:00' },
+        { kicker: 'Pfand', title: 'Ausgabe', meta: 'am Einlass' },
+      ],
+      schedule: [],
     },
   };
 
@@ -212,14 +256,25 @@
     return next;
   }
 
-  function fillList(el, lines) {
+  function fillCards(el, items) {
     if (!el) return;
     el.replaceChildren();
-    lines.forEach(function (line) {
-      var item = document.createElement('div');
-      item.className = 'glass-list__item';
-      item.textContent = line;
-      el.appendChild(item);
+    items.forEach(function (item) {
+      var card = document.createElement('div');
+      card.className = 'glass-stack-card';
+      var kicker = document.createElement('span');
+      kicker.className = 'glass-hero__kicker';
+      kicker.textContent = item.kicker || item.time || '';
+      var title = document.createElement('strong');
+      title.textContent = item.title || '';
+      card.append(kicker, title);
+      if (item.meta) {
+        var meta = document.createElement('span');
+        meta.className = 'glass-hero__meta';
+        meta.textContent = item.meta;
+        card.append(meta);
+      }
+      el.appendChild(card);
     });
   }
 
@@ -236,33 +291,113 @@
       openNow.setAttribute('data-open-slug', sheet.nowSlug);
       openNow.setAttribute('data-app-title', sheet.nowTitle);
     }
-    fillList(document.querySelector('[data-now-list]'), sheet.rows);
-    fillList(document.querySelector('[data-schedule]'), sheet.schedule);
+    fillCards(document.querySelector('[data-now-list]'), sheet.rows);
     document.querySelectorAll('[data-pick-event]').forEach(function (button) {
       button.setAttribute('aria-pressed', button.getAttribute('data-pick-event') === sheet.id ? 'true' : 'false');
     });
     writeStore({ event: id in SHEETS ? id : 'leipzig' });
+    var plan = document.querySelector('[data-plan-frame]');
+    if (plan) plan.removeAttribute('src');
+    var ablauf = document.querySelector('[data-day-panel="ablauf"]');
+    if (ablauf && !ablauf.hidden) showPlan();
   }
 
   SHEETS.leipzig.id = 'leipzig';
   SHEETS.halle.id = 'halle';
   SHEETS.dresden.id = 'dresden';
 
+  var bubblePlaced = false;
+  var bubbleTimer = 0;
+
+  function placeBubble() {
+    var nav = document.querySelector('.glass-app__mobile-tabs');
+    var bubble = nav && nav.querySelector('.glass-app__tab-bubble');
+    if (!nav || !bubble || nav.offsetWidth === 0) return;
+    var marked = nav.querySelectorAll('.glass-app__mobile-tab--active');
+    var active = marked.length ? marked[marked.length - 1] : null;
+    if (!active) {
+      bubble.hidden = true;
+      bubblePlaced = false;
+      return;
+    }
+    var navBox = nav.getBoundingClientRect();
+    var box = active.getBoundingClientRect();
+    var x = box.left - navBox.left;
+    var y = box.top - navBox.top;
+    var moved = bubblePlaced && Math.abs(x - parseFloat(bubble.dataset.x || '0')) > 1;
+    bubble.hidden = false;
+    bubble.dataset.x = String(x);
+    bubble.style.width = box.width + 'px';
+    bubble.style.height = box.height + 'px';
+    bubble.style.transform = 'translate(' + x + 'px, ' + y + 'px)';
+    bubble.classList.toggle('is-swoosh', moved);
+    bubblePlaced = true;
+    if (!moved) return;
+    window.clearTimeout(bubbleTimer);
+    bubbleTimer = window.setTimeout(function () { bubble.classList.remove('is-swoosh'); }, 280);
+  }
+
+  function closeSheet() {
+    if (!appEl.classList.contains('glass-app--drawer-open')) return;
+    var toggle = document.querySelector('[data-menu-toggle]');
+    if (toggle) toggle.click();
+  }
+
+  function syncMore(open) {
+    var more = document.querySelector('[data-day-more]');
+    if (more) {
+      more.setAttribute('aria-pressed', open ? 'true' : 'false');
+      more.classList.toggle('glass-app__mobile-tab--active', open);
+    }
+    if (!open) {
+      var visible = document.querySelector('[data-day-panel]:not([hidden])');
+      var name = visible ? visible.getAttribute('data-day-panel') : 'heute';
+      document.querySelectorAll('[data-day-tab]').forEach(function (tab) {
+        tab.classList.toggle('glass-app__mobile-tab--active', tab.getAttribute('data-day-tab') === name);
+      });
+    } else {
+      document.querySelectorAll('[data-day-tab]').forEach(function (tab) {
+        tab.classList.remove('glass-app__mobile-tab--active');
+      });
+    }
+    placeBubble();
+  }
+
   function showTab(name) {
+    closeSheet();
     document.querySelectorAll('[data-day-tab]').forEach(function (tab) {
       var on = tab.getAttribute('data-day-tab') === name;
-      tab.classList.toggle('glass-page-tab--active', on);
+      tab.classList.toggle('glass-app__mobile-tab--active', on);
       tab.setAttribute('aria-selected', on ? 'true' : 'false');
     });
+    var more = document.querySelector('[data-day-more]');
+    if (more) {
+      more.setAttribute('aria-pressed', 'false');
+      more.classList.remove('glass-app__mobile-tab--active');
+    }
     document.querySelectorAll('[data-day-panel]').forEach(function (panel) {
       panel.hidden = panel.getAttribute('data-day-panel') !== name;
     });
     writeStore({ tab: name, screen: 'home' });
+    if (name === 'ablauf') showPlan();
+    placeBubble();
+  }
+
+  function showPlan() {
+    var frame = document.querySelector('[data-plan-frame]');
+    if (!frame) return;
+    var stored = readStore();
+    var sheet = SHEETS[stored.event] || SHEETS.leipzig;
+    var path = String(sheet.plan || '').replace(/^\/+/, '');
+    if (!path) return;
+    var src = '/' + path + '?zeitplan=1';
+    if (frame.getAttribute('src') !== src) frame.src = src;
   }
 
   if (home) home.hidden = true;
   if (day) day.hidden = false;
   if (eventBlock) eventBlock.hidden = false;
+  appEl.classList.add('glass-app--mobile-tabs');
 
   function appBySlug(slug) {
     return (config.apps || []).find(function (row) { return row.slug === slug; }) || null;
@@ -366,9 +501,35 @@
 
   document.querySelectorAll('[data-day-tab]').forEach(function (tab) {
     tab.addEventListener('click', function () {
+      if (appEl.classList.contains('glass-app--hub')) showHome(false);
       showTab(tab.getAttribute('data-day-tab'));
     });
   });
+
+  var moreBtn = document.querySelector('[data-day-more]');
+  if (moreBtn) {
+    moreBtn.addEventListener('click', function () {
+      var toggle = document.querySelector('[data-menu-toggle]');
+      if (toggle) toggle.click();
+      syncMore(appEl.classList.contains('glass-app--drawer-open'));
+    });
+  }
+
+  document.querySelectorAll('[data-sheet-close]').forEach(function (button) {
+    button.addEventListener('click', function () {
+      closeSheet();
+      syncMore(false);
+    });
+  });
+
+  var backdrop = document.querySelector('.glass-app__backdrop');
+  if (backdrop) {
+    backdrop.addEventListener('click', function () {
+      syncMore(false);
+    });
+  }
+
+  window.addEventListener('resize', placeBubble);
 
   document.querySelectorAll('[data-pick-event]').forEach(function (button) {
     button.addEventListener('click', function () {

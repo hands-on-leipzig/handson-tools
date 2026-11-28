@@ -44,8 +44,11 @@ describe('pages', () => {
     assert.match(html, /data-app-slug="rg"/);
     assert.match(html, /data-hub hidden/);
     assert.match(html, /data-day hidden/);
-    assert.match(html, /glass-page-tabs/);
-    assert.match(html, /glass-card/);
+    assert.match(html, /data-build-banner hidden/);
+    assert.match(html, /Aktualisieren/);
+    assert.match(html, /glass-app__mobile-tabs/);
+    assert.doesNotMatch(html, /glass-page-tabs/);
+    assert.match(html, /glass-hero/);
     assert.match(html, /"slug":"rg"/);
     assert.doesNotMatch(html, /"slug":"test-flow"/);
   });
