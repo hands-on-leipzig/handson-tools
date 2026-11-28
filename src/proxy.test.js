@@ -124,6 +124,7 @@ describe('gateway proxy', () => {
   it('lets JOIN embed the public one-link and the apex embed the apps', () => {
     const sources = frameAncestorSources('handson.tools', false);
     assert.ok(sources.includes('https://handson.tools'));
+    assert.ok(sources.includes('https://*.handson.tools'));
     assert.ok(sources.includes('https://*.hands-on-technology.org'));
     assert.equal(sources.some((source) => source.includes('localhost')), false);
   });

@@ -87,6 +87,7 @@ function setForwarded(req) {
 function frameAncestorSources(baseDomain, dev) {
   const sources = [
     `https://${baseDomain}`,
+    `https://*.${baseDomain}`,
     'https://*.hands-on-technology.org',
   ];
   if (dev) {
